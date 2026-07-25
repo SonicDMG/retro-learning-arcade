@@ -40,9 +40,9 @@ SAVE_PATH = os.path.join(SAVE_DIR, "progress.json")
 
 # Fixed profile slots. Kids pick an avatar instead of typing a name.
 PROFILES = [
-    ("Rocket", "rocket"),
-    ("Kitty", "cat"),
-    ("Star", "star"),
+    ("Juni", "rocket"),
+    ("Sage", "cat"),
+    ("Other", "star"),
 ]
 
 

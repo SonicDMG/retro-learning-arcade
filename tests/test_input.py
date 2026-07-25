@@ -151,7 +151,7 @@ class TestTypingActuallyAdvances(unittest.TestCase):
     def test_f_advances_an_earth_prompt(self):
         os.environ["RETRO_ARCADE_SAVE_DIR"] = "/tmp/retro-input-test"
         try:
-            player = progress.Player("Rocket")
+            player = progress.Player(progress.PROFILES[0][0])
             scene = crystal_keys.TypingRoundScene(self.app, player, "earth")
             scene.prompts = ["fall"] * crystal_keys.ROUND_LENGTH
             self.app.scenes = []

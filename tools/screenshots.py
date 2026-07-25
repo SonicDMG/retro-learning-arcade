@@ -66,7 +66,7 @@ def posed_scene(app, module, scene_factory, question):
 
 
 def demo_player(stars=42):
-    player = progress.Player("Rocket")
+    player = progress.Player(progress.PROFILES[0][0])
     player.entry["stars"] = stars  # In memory only; never written to disk.
     return player
 

@@ -159,7 +159,7 @@ Blaster. A six-year-old usually wants EASY or OK.
 
 ## How it plays
 
-Pick a player (Rocket, Kitty or Star), pick a game, answer the round.
+Pick a player (Juni, Sage or Other), pick a game, answer the round.
 Answers can be clicked with the mouse or chosen with the `1` `2` `3` keys; in
 Word Rocket the child can also just press the letter key.
 
