@@ -119,13 +119,25 @@ class App:
             self._pump_events()
             if not self.running:
                 break
-            scene = self.scene
-            if scene:
-                scene.update(dt)
-                self.virtual.fill(palette.BG_DEEP)
-                scene.draw(self.virtual)
+            self.advance(dt)
             self._present()
         pygame.quit()
+
+    def advance(self, dt):
+        """Update, then draw, one frame's worth of the current scene.
+
+        The scene is looked up twice on purpose. A scene is allowed to finish
+        itself during update -- a round ending replaces itself with the
+        results screen -- and drawing the scene we started the frame with
+        would then render a scene that has already been torn down.
+        """
+        scene = self.scene
+        if scene:
+            scene.update(dt)
+        scene = self.scene
+        if scene:
+            self.virtual.fill(palette.BG_DEEP)
+            scene.draw(self.virtual)
 
     def _pump_events(self):
         for event in pygame.event.get():

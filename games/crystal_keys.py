@@ -297,7 +297,10 @@ class TypingRoundScene(Scene):
         """
         prompt = self.prompt
         size = 38 if len(prompt) <= 8 else 30
-        cell = max(ui.text_size(letter, size)[0] for letter in prompt) + 3
+        # The prompt is empty once the last one is done. Nothing to lay out,
+        # and max() of no letters would raise.
+        widths = [ui.text_size(letter, size)[0] for letter in prompt]
+        cell = (max(widths) if widths else 0) + 3
         return 160 - (cell * len(prompt)) // 2, cell, size
 
     def _spark(self):
@@ -417,6 +420,8 @@ class TypingRoundScene(Scene):
     def _draw_prompt(self, surface):
         """The word, with typed letters lit and the current one underlined."""
         prompt = self.prompt
+        if not prompt:
+            return
         start_x, cell, size = self._prompt_layout()
         if self.shake > 0:
             start_x += int(math.sin(self.time * 60) * 3)
