@@ -135,17 +135,22 @@ class App:
             if event.type == pygame.VIDEORESIZE and not self.fullscreen:
                 self.window_size = (event.w, event.h)
             if event.type == pygame.KEYDOWN:
-                mods = pygame.key.get_mods()
-                if event.key == pygame.K_q and mods & pygame.KMOD_META:
-                    self.quit()
-                    return
-                if event.key == pygame.K_f and not mods & pygame.KMOD_META:
-                    self.toggle_fullscreen()
-                    continue
-                if event.key == pygame.K_m:
-                    sfx.set_muted(not sfx.is_muted())
-                    sfx.play("click")
-                    continue
+                # Every app shortcut needs a modifier. A bare letter is always
+                # the game's to handle: the typing tutor needs F and M to be
+                # letters, and any plain-letter shortcut would eventually
+                # collide with something a child is trying to type.
+                command = pygame.key.get_mods() & (pygame.KMOD_META | pygame.KMOD_CTRL)
+                if command:
+                    if event.key == pygame.K_q:
+                        self.quit()
+                        return
+                    if event.key == pygame.K_f:
+                        self.toggle_fullscreen()
+                        continue
+                    if event.key == pygame.K_m:
+                        sfx.set_muted(not sfx.is_muted())
+                        sfx.play("click")
+                        continue
             if event.type in (
                 pygame.MOUSEBUTTONDOWN,
                 pygame.MOUSEBUTTONUP,

@@ -193,7 +193,7 @@ class ArcadeScene(Scene):
         # hovered game explains itself down here instead.
         ui.text(
             surface,
-            hovered or "F = FULL SCREEN   M = MUTE   ESC = BACK",
+            hovered or "CTRL-F FULL SCREEN   CTRL-M MUTE   ESC BACK",
             (160, 168),
             palette.GRAY if hovered else palette.DARK_GRAY,
             12,

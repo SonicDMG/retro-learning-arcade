@@ -196,7 +196,7 @@ score sounds bigger than a small one.
 
 Failure is deliberately gentle. The wrong-answer tone is a low triangle wave,
 quieter than the success sounds, because a harsh buzzer teaches a child to
-fear being wrong. `M` mutes everything.
+fear being wrong. `Ctrl-M` mutes everything.
 
 ### Keys
 
@@ -204,11 +204,20 @@ fear being wrong. `M` mutes everything.
 | --- | --- |
 | `1` `2` `3` | Pick an answer |
 | Mouse click | Pick an answer |
-| Letter keys | Type, in Crystal Keys |
-| `F` | Full screen on/off |
-| `M` | Mute/unmute |
+| Letter keys | Type, in Crystal Keys and Word Rocket |
 | `Esc` | Back one screen |
-| `Cmd-Q` | Quit |
+| `Ctrl-F` / `Cmd-F` | Full screen on/off |
+| `Ctrl-M` / `Cmd-M` | Mute/unmute |
+| `Ctrl-Q` / `Cmd-Q` | Quit |
+
+**No command is a bare key.** Every shortcut needs Ctrl or Cmd, so a plain
+letter always belongs to the game — otherwise typing `f` in the Earth lesson
+would toggle full screen instead of typing a letter, which is exactly the bug
+that prompted the rule. `Esc` is the one exception, and it means "go back",
+never a command.
+
+On macOS, `Cmd-M` is the system shortcut for minimising a window and may be
+swallowed before the game sees it. `Ctrl-M` always works.
 
 ## Making it your own
 
