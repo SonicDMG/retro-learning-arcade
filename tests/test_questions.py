@@ -26,56 +26,39 @@ REPEATS = 400
 
 
 class TestMathQuestions(unittest.TestCase):
-    def test_answer_is_always_offered(self):
-        for mode in ("count", "add", "sub", "compare"):
-            for difficulty in (1, 2, 3):
-                for _ in range(REPEATS):
-                    question = math_blaster.make_question(mode, difficulty)
-                    self.assertIn(
-                        question["answer"],
-                        question["choices"],
-                        f"{mode} d{difficulty}: {question}",
-                    )
-
-    def test_choices_are_distinct(self):
-        for mode in ("count", "add", "sub", "compare"):
-            for difficulty in (1, 2, 3):
-                for _ in range(REPEATS):
-                    choices = math_blaster.make_question(mode, difficulty)["choices"]
-                    self.assertEqual(len(choices), len(set(choices)), choices)
-
-    def test_no_negative_choices(self):
-        for mode in ("count", "add", "sub", "compare"):
-            for difficulty in (1, 2, 3):
-                for _ in range(REPEATS):
-                    for value in math_blaster.make_question(mode, difficulty)["choices"]:
-                        self.assertGreaterEqual(value, 0)
+    """Mode-specific rules. The broad checks across every mode and tier --
+    answer offered, choices distinct, nothing negative -- live in
+    tests/test_reasoning.py."""
 
     def test_addition_respects_the_level_cap(self):
-        for difficulty, cap in math_blaster.ADD_CAP.items():
+        for tier, (_, _, cap) in math_blaster.ADD_RANGE.items():
             for _ in range(REPEATS):
-                question = math_blaster.make_question("add", difficulty)
+                question = math_blaster.make_question("add", tier)
                 self.assertLessEqual(question["answer"], cap, question["prompt"])
 
     def test_subtraction_never_goes_below_zero(self):
-        for difficulty in (1, 2, 3):
+        for tier in (1, 2, 3, 4):
             for _ in range(REPEATS):
-                question = math_blaster.make_question("sub", difficulty)
+                question = math_blaster.make_question("sub", tier)
                 self.assertGreaterEqual(question["answer"], 0, question["prompt"])
 
     def test_counting_matches_the_pictures_shown(self):
-        for difficulty in (1, 2, 3):
-            low, high = math_blaster.LIMITS["count"][difficulty]
+        for tier, (low, high) in math_blaster.COUNT_RANGE.items():
             for _ in range(REPEATS):
-                question = math_blaster.make_question("count", difficulty)
+                question = math_blaster.make_question("count", tier)
                 self.assertEqual(question["count"], question["answer"])
                 self.assertTrue(low <= question["count"] <= high)
                 self.assertIn(question["sprite"], sprites.SPRITES)
 
+    def test_counting_stays_drawable(self):
+        """The count grid is five across and the panel fits three rows."""
+        for tier in math_blaster.COUNT_RANGE:
+            self.assertLessEqual(math_blaster.COUNT_RANGE[tier][1], 15)
+
     def test_compare_picks_the_right_extreme(self):
-        for difficulty in (1, 2, 3):
+        for tier in (1, 2, 3, 4):
             for _ in range(REPEATS):
-                question = math_blaster.make_question("compare", difficulty)
+                question = math_blaster.make_question("compare", tier)
                 first, second = question["choices"]
                 self.assertNotEqual(first, second)
                 expected = (

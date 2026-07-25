@@ -1,64 +1,124 @@
-"""Number Blaster -- a space-themed maths game for early primary kids.
+"""Number Blaster -- a space-themed maths game.
 
-Four modes (count, add, subtract, compare) across three difficulty levels.
-Rounds are ten questions long, wrong answers cost nothing but a retry, and a
-star is earned for every question answered correctly on the first try.
+Which modes appear, and how hard they are, follows the player's age: a
+five-year-old counts ducks, an eight-year-old gets times tables, division and
+word problems, and a twelve-year-old gets two-digit multiplication and
+two-step problems. The age sets the starting tier; the menu still lets a
+child nudge it easier or harder.
+
+Rounds are ten questions. Wrong answers cost nothing but a retry, and a star
+is earned for every question answered correctly first time.
 """
 
 import random
 
 import pygame
 
-from retro import palette, sfx, sprites, ui
+from retro import levels, palette, sfx, sprites, ui
 from retro.app import Scene
 from retro.results import ResultsScene
 
 GAME_KEY = "math"
 ROUND_LENGTH = 10
 
-MODES = [
-    ("count", "COUNT", "duck", palette.YELLOW),
-    ("add", "ADD +", "rocket", palette.GREEN),
-    ("sub", "TAKE AWAY -", "star", palette.MAGENTA),
-    ("compare", "MORE OR LESS", "fish", palette.CYAN),
-]
+# key, label, icon, colour
+MODES = {
+    "count": ("COUNT", "duck", palette.YELLOW),
+    "add": ("ADD +", "rocket", palette.GREEN),
+    "sub": ("TAKE AWAY -", "star", palette.MAGENTA),
+    "multiply": ("TIMES x", "flame", palette.ORANGE),
+    "divide": ("SHARE /", "crystal", palette.CYAN),
+    "word": ("STORY", "book", palette.PURPLE),
+    "compare": ("MORE OR LESS", "fish", palette.BLUE),
+}
+
+# Six modes at most, so the menu stays a tidy three by two.
+MODES_BY_TIER = {
+    1: ["count", "add", "sub", "compare"],
+    2: ["add", "sub", "multiply", "divide", "word", "compare"],
+    3: ["add", "sub", "multiply", "divide", "word", "compare"],
+    4: ["multiply", "divide", "word", "add", "sub", "compare"],
+}
 
 COUNTABLE = ["duck", "star", "apple", "fish", "cat", "frog", "ball", "cake"]
 
-# Per-difficulty numeric ranges, keyed by mode.
-LIMITS = {
-    "count": {1: (1, 5), 2: (1, 10), 3: (5, 15)},
-    "add": {1: (1, 5), 2: (1, 10), 3: (2, 12)},
-    "sub": {1: (1, 5), 2: (1, 10), 3: (1, 20)},
-    "compare": {1: (1, 10), 2: (1, 20), 3: (10, 50)},
-}
-ADD_CAP = {1: 10, 2: 15, 3: 20}
+COUNT_RANGE = {1: (1, 5), 2: (4, 12), 3: (6, 15), 4: (8, 15)}
+ADD_RANGE = {1: (1, 5, 10), 2: (2, 20, 30), 3: (10, 99, 150), 4: (50, 499, 999)}
+SUB_MAX = {1: 5, 2: 20, 3: 100, 4: 999}
+COMPARE_RANGE = {1: (1, 10), 2: (1, 50), 3: (1, 500), 4: (100, 9999)}
+
+STORY_ITEMS = [
+    "STICKERS", "MARBLES", "APPLES", "COINS",
+    "SHELLS", "CARDS", "BLOCKS", "CONKERS",
+]
 
 
-def _distractors(answer, low, high, count=2):
-    """Plausible wrong answers: near misses first, then anything in range."""
-    options = set()
-    near = [answer + delta for delta in (-2, -1, 1, 2, 3, -3)]
-    for value in near:
-        if value >= 0 and value != answer:
-            options.add(value)
-    pool = [value for value in options if low - 2 <= value <= high + 3]
-    random.shuffle(pool)
-    chosen = pool[:count]
+def _distractors(answer, count=2):
+    """Wrong answers that scale with the size of the right one."""
+    if answer <= 20:
+        offsets = [-3, -2, -1, 1, 2, 3]
+    elif answer <= 100:
+        offsets = [-10, -5, -2, -1, 1, 2, 5, 10]
+    else:
+        offsets = [-100, -20, -10, -1, 1, 10, 20, 100]
+    options = {answer + offset for offset in offsets}
+    options = [value for value in options if value >= 0 and value != answer]
+    random.shuffle(options)
+    chosen = options[:count]
     guard = 0
     while len(chosen) < count and guard < 50:
         guard += 1
-        value = random.randint(max(0, low - 1), high + 2)
-        if value != answer and value not in chosen:
-            chosen.append(value)
+        candidate = max(0, answer + random.randint(-4, 4))
+        if candidate != answer and candidate not in chosen:
+            chosen.append(candidate)
     return chosen
 
 
-def make_question(mode, difficulty):
-    """Build one question dictionary for the given mode and difficulty."""
-    low, high = LIMITS[mode][difficulty]
+def _story(tier, name):
+    """A word problem, using the player's own name."""
+    who = (name or "SAM").upper()
+    item = random.choice(STORY_ITEMS)
+    if tier <= 2:
+        first = random.randint(5, 20)
+        second = random.randint(2, min(first, 12))
+        if random.random() < 0.5:
+            text = f"{who} HAS {first} {item} AND FINDS {second} MORE. HOW MANY NOW?"
+            answer = first + second
+        else:
+            text = f"{who} HAS {first} {item} AND GIVES AWAY {second}. HOW MANY ARE LEFT?"
+            answer = first - second
+    elif tier == 3:
+        if random.random() < 0.5:
+            bags = random.randint(3, 8)
+            each = random.randint(3, 9)
+            text = f"{who} HAS {bags} BAGS WITH {each} {item} IN EACH. HOW MANY {item}?"
+            answer = bags * each
+        else:
+            friends = random.randint(3, 6)
+            each = random.randint(3, 9)
+            text = (
+                f"{who} SHARES {friends * each} {item} BETWEEN {friends} FRIENDS. "
+                "HOW MANY EACH?"
+            )
+            answer = each
+    else:
+        packs = random.randint(4, 9)
+        each = random.randint(4, 9)
+        used = random.randint(2, min(9, packs * each - 1))
+        text = (
+            f"{who} BUYS {packs} PACKS OF {each} {item} AND USES {used}. "
+            "HOW MANY ARE LEFT?"
+        )
+        answer = packs * each - used
+    return text, answer
+
+
+def make_question(mode, tier, name=None):
+    """Build one question for the given mode and difficulty tier."""
+    tier = levels.clamp_tier(tier)
 
     if mode == "count":
+        low, high = COUNT_RANGE[tier]
         total = random.randint(low, high)
         question = {
             "kind": "count",
@@ -67,45 +127,80 @@ def make_question(mode, difficulty):
             "count": total,
             "answer": total,
         }
-        question["choices"] = [total] + _distractors(total, low, high)
 
     elif mode == "add":
-        cap = ADD_CAP[difficulty]
+        low, high, cap = ADD_RANGE[tier]
         first = random.randint(low, high)
         second = random.randint(low, max(low, min(high, cap - first)))
-        total = first + second
         question = {
             "kind": "expr",
             "prompt": f"{first} + {second} = ?",
-            "answer": total,
+            "answer": first + second,
         }
-        question["choices"] = [total] + _distractors(total, low, cap)
 
     elif mode == "sub":
-        first = random.randint(max(2, low), high)
+        high = SUB_MAX[tier]
+        first = random.randint(2, high)
         second = random.randint(0, first)
-        result = first - second
         question = {
             "kind": "expr",
             "prompt": f"{first} - {second} = ?",
+            "answer": first - second,
+        }
+
+    elif mode == "multiply":
+        if tier <= 2:
+            first = random.choice([2, 5, 10])
+            second = random.randint(1, 10)
+        elif tier == 3:
+            first = random.randint(2, 12)
+            second = random.randint(2, 12)
+        else:
+            first = random.randint(11, 25)
+            second = random.randint(3, 9)
+        question = {
+            "kind": "expr",
+            "prompt": f"{first} x {second} = ?",
+            "answer": first * second,
+        }
+
+    elif mode == "divide":
+        if tier <= 2:
+            divisor = random.choice([2, 5, 10])
+            result = random.randint(1, 10)
+        elif tier == 3:
+            divisor = random.randint(2, 12)
+            result = random.randint(2, 12)
+        else:
+            divisor = random.randint(3, 12)
+            result = random.randint(11, 30)
+        # Built from the answer up, so it always divides exactly.
+        question = {
+            "kind": "expr",
+            "prompt": f"{divisor * result} / {divisor} = ?",
             "answer": result,
         }
-        question["choices"] = [result] + _distractors(result, 0, high)
+
+    elif mode == "word":
+        text, answer = _story(tier, name)
+        question = {"kind": "story", "prompt": text, "answer": answer}
 
     else:  # compare
+        low, high = COMPARE_RANGE[tier]
         first = random.randint(low, high)
         second = random.randint(low, high)
         while second == first:
             second = random.randint(low, high)
         want_more = random.random() < 0.5
-        answer = max(first, second) if want_more else min(first, second)
         question = {
             "kind": "compare",
             "prompt": "WHICH IS MORE?" if want_more else "WHICH IS LESS?",
-            "answer": answer,
+            "answer": max(first, second) if want_more else min(first, second),
             "choices": [first, second],
         }
 
+    if "choices" not in question:
+        question["choices"] = [question["answer"]] + _distractors(question["answer"])
     random.shuffle(question["choices"])
     return question
 
@@ -122,27 +217,26 @@ def _layout(count):
 
 
 class MathRoundScene(Scene):
-    """Ten questions of one mode at one difficulty."""
+    """Ten questions of one mode at one tier."""
 
-    def __init__(self, app, player, mode, difficulty):
+    def __init__(self, app, player, mode, tier):
         super().__init__(app)
         self.player = player
         self.mode = mode
-        self.difficulty = difficulty
-        self.mode_label = next(label for key, label, _, _ in MODES if key == mode)
-        self.accent = next(color for key, _, _, color in MODES if key == mode)
+        self.tier = levels.clamp_tier(tier)
+        self.mode_label, _, self.accent = MODES[mode]
         self.index = 0
         self.correct = 0
         self.streak = 0
         self.question = None
         self.buttons = []
         self.attempts = 0
-        self.state = "asking"     # asking -> celebrating -> next question
+        self.state = "asking"
         self.state_timer = 0.0
         self.time = 0.0
         self.particles = ui.Particles()
         self.starfield = ui.Starfield(320, 180, count=50, speed=10)
-        self.hint = ui.HintTimer(9.0)
+        self.hint = ui.HintTimer(12.0)
         self.rocket = None
         self.feedback = ""
 
@@ -150,19 +244,20 @@ class MathRoundScene(Scene):
         if self.question is None:
             self._next_question()
 
-    # -- question flow ----------------------------------------------------
-
     def _next_question(self):
         if self.index >= ROUND_LENGTH:
             self._finish()
             return
         self.index += 1
-        self.question = make_question(self.mode, self.difficulty)
+        self.question = make_question(self.mode, self.tier, self.player.name)
         self.attempts = 0
         self.state = "asking"
         self.feedback = ""
         self.hint.reset()
         rects = _layout(len(self.question["choices"]))
+        # Long numbers need a smaller face than single digits.
+        widest = max(len(str(value)) for value in self.question["choices"])
+        size = 30 if widest <= 3 else (24 if widest <= 4 else 18)
         self.buttons = []
         for slot, (rect, value) in enumerate(zip(rects, self.question["choices"])):
             self.buttons.append(
@@ -171,7 +266,7 @@ class MathRoundScene(Scene):
                     str(value),
                     palette.ACCENTS[slot % len(palette.ACCENTS)],
                     hotkey=str(slot + 1),
-                    text_size=30,
+                    text_size=size,
                     value=value,
                 )
             )
@@ -186,8 +281,9 @@ class MathRoundScene(Scene):
                 self.correct,
                 ROUND_LENGTH,
                 lambda app: app.replace(
-                    MathRoundScene(app, self.player, self.mode, self.difficulty)
+                    MathRoundScene(app, self.player, self.mode, self.tier)
                 ),
+                detail=f"LEVEL {levels.tier_name(self.tier)}",
             )
         )
 
@@ -271,7 +367,9 @@ class MathRoundScene(Scene):
         area = pygame.Rect(14, 26, 292, 84)
         ui.panel(surface, area, palette.BG_PANEL, self.accent)
         question = self.question
-        if question["kind"] == "count":
+        kind = question["kind"]
+
+        if kind == "count":
             ui.text(surface, question["prompt"], (160, area.y + 5), palette.WHITE, 18, align="center")
             total = question["count"]
             columns = 5
@@ -283,7 +381,19 @@ class MathRoundScene(Scene):
                 x = 160 - in_row * 18 // 2 + column * 18
                 bob = ui.title_wobble(self.time + i * 0.4, 1.0, 3.0)
                 sprites.draw(surface, question["sprite"], (x, int(start_y + row * 19 + bob)))
-        elif question["kind"] == "compare":
+
+        elif kind == "story":
+            ui.text_block(
+                surface,
+                question["prompt"],
+                160,
+                area.y + 10,
+                palette.WHITE,
+                14,
+                area.width - 16,
+            )
+
+        elif kind == "compare":
             ui.text(surface, question["prompt"], (160, area.y + 8), palette.WHITE, 22, align="center")
             ui.text(
                 surface,
@@ -293,14 +403,16 @@ class MathRoundScene(Scene):
                 14,
                 align="center",
             )
+
         else:
             bob = ui.title_wobble(self.time, 1.5, 2.0)
+            size = 46 if len(question["prompt"]) <= 12 else 34
             ui.text(
                 surface,
                 question["prompt"],
                 (160, int(area.y + 26 + bob)),
                 palette.WHITE,
-                46,
+                size,
                 align="center",
             )
 
@@ -308,7 +420,7 @@ class MathRoundScene(Scene):
         surface.fill(palette.BG_DEEP)
         self.starfield.draw(surface)
 
-        ui.text(surface, f"{self.mode_label}", (4, 3), self.accent, 14)
+        ui.text(surface, self.mode_label, (4, 3), self.accent, 14)
         ui.text(
             surface,
             f"{self.index}/{ROUND_LENGTH}",
@@ -334,42 +446,63 @@ class MathRoundScene(Scene):
             color = palette.GREEN if self.state == "celebrating" else palette.ORANGE
             ui.text(surface, self.feedback, (160, 112), color, 16, align="center")
         elif self.hint.ready and self.state == "asking":
-            ui.text(
-                surface,
-                "TAKE YOUR TIME...",
-                (160, 112),
-                palette.GRAY,
-                14,
-                align="center",
-            )
+            ui.text(surface, "TAKE YOUR TIME...", (160, 112), palette.GRAY, 14, align="center")
         if self.streak >= 3 and self.state == "asking":
             ui.text(surface, f"STREAK {self.streak}!", (4, 166), palette.YELLOW, 14)
         ui.text(surface, "ESC = MENU", (316, 166), palette.DARK_GRAY, 12, align="right")
 
 
 class MathMenuScene(Scene):
-    """Pick a mode and a difficulty, then play."""
+    """Pick a mode. Which ones are offered depends on the player's age."""
 
     def __init__(self, app, player):
         super().__init__(app)
         self.player = player
-        self.difficulty = 1
+        self.nudge = 0
         self.time = 0.0
         self.starfield = ui.Starfield(320, 180, count=40, speed=8)
         self.mode_buttons = []
-        for index, (key, label, sprite, color) in enumerate(MODES):
-            column, row = index % 2, index // 2
-            rect = pygame.Rect(24 + column * 144, 34 + row * 54, 128, 50)
+        self.nudge_buttons = [
+            ui.Button(
+                (56 + index * 72, 132, 68, 20),
+                levels.NUDGE_NAMES[value],
+                palette.PURPLE,
+                text_size=12,
+                value=value,
+            )
+            for index, value in enumerate(levels.NUDGES)
+        ]
+        self._build_modes()
+
+    @property
+    def tier(self):
+        return self.player.tier(self.nudge)
+
+    def _build_modes(self):
+        """Three by two, showing only what suits this player's age."""
+        available = MODES_BY_TIER[levels.tier_for_age(self.player.age)]
+        self.mode_buttons = []
+        for index, key in enumerate(available[:6]):
+            label, icon, color = MODES[key]
+            column, row = index % 3, index // 3
+            rect = pygame.Rect(10 + column * 100, 38 + row * 46, 96, 42)
             self.mode_buttons.append(
                 ui.Button(
-                    rect, label, color, sprite=sprite, hotkey=str(index + 1), text_size=14, value=key
+                    rect,
+                    label,
+                    color,
+                    sprite=icon,
+                    hotkey=str(index + 1),
+                    text_size=12,
+                    value=key,
                 )
             )
-        # The difficulty row shares a line with its label to save vertical space.
-        self.difficulty_buttons = [
-            ui.Button((104 + index * 56, 146, 50, 22), label, palette.PURPLE, text_size=14, value=index + 1)
-            for index, label in enumerate(("EASY", "OK", "HARD"))
-        ]
+
+    def on_enter(self):
+        from retro import progress
+
+        self.player = progress.Player(self.player.name)
+        self._build_modes()
 
     def handle_event(self, event):
         if event.type == pygame.KEYDOWN:
@@ -377,30 +510,29 @@ class MathMenuScene(Scene):
                 sfx.play("back")
                 self.app.pop()
                 return
-            for index, key in enumerate(
-                (pygame.K_1, pygame.K_2, pygame.K_3, pygame.K_4)
-            ):
-                if event.key == key:
-                    self._start(MODES[index][0])
+            keys = (pygame.K_1, pygame.K_2, pygame.K_3, pygame.K_4, pygame.K_5, pygame.K_6)
+            for index, key in enumerate(keys):
+                if event.key == key and index < len(self.mode_buttons):
+                    self._start(self.mode_buttons[index].value)
                     return
         for button in self.mode_buttons:
             if button.handle_event(event):
                 self._start(button.value)
                 return
-        for button in self.difficulty_buttons:
+        for button in self.nudge_buttons:
             if button.handle_event(event):
-                self.difficulty = button.value
+                self.nudge = button.value
                 sfx.play("click")
                 return
 
     def _start(self, mode):
         sfx.play("select")
-        self.app.push(MathRoundScene(self.app, self.player, mode, self.difficulty))
+        self.app.push(MathRoundScene(self.app, self.player, mode, self.tier))
 
     def update(self, dt):
         self.time += dt
         self.starfield.update(dt)
-        for button in self.mode_buttons + self.difficulty_buttons:
+        for button in self.mode_buttons + self.nudge_buttons:
             button.update(dt)
 
     def draw(self, surface):
@@ -410,19 +542,28 @@ class MathMenuScene(Scene):
         ui.text(
             surface,
             "NUMBER BLASTER",
-            (160, int(8 + wobble)),
+            (160, int(6 + wobble)),
             palette.YELLOW,
-            30,
+            28,
             align="center",
         )
-        ui.star_counter(surface, self.player.stars, (4, 2))
         ui.text(surface, "ESC = BACK", (316, 4), palette.DARK_GRAY, 12, align="right")
         for button in self.mode_buttons:
             button.draw(surface)
-        ui.text(surface, "HOW HARD?", (10, 152), palette.WHITE, 14)
-        for button in self.difficulty_buttons:
-            button.color = palette.YELLOW if button.value == self.difficulty else palette.PURPLE
+        ui.text(surface, "LEVEL", (6, 138), palette.WHITE, 12)
+        for button in self.nudge_buttons:
+            button.color = palette.YELLOW if button.value == self.nudge else palette.PURPLE
             button.draw(surface)
+        age = self.player.age
+        summary = f"AGE {age}" if age else "AGE NOT SET"
+        ui.text(
+            surface,
+            f"{summary}   -   {levels.tier_name(self.tier)}",
+            (160, 158),
+            palette.GRAY,
+            13,
+            align="center",
+        )
 
 
 def launch(app, player):

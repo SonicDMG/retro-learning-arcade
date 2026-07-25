@@ -2,11 +2,15 @@
 
 ![Number Blaster, Word Rocket and Pattern Power](docs/screenshots/banner.png)
 
-Four little learning games for kids, in Python, with chunky 8-bit graphics and
-chiptune bleeps. The first three are built for a six-year-old: big buttons,
-almost no reading required, nothing to lose, and a star for every question
-answered right on the first go. The fourth, a typing tutor, is pitched a
-little older -- around seven to nine.
+Five little learning games for kids, in Python, with chunky 8-bit graphics and
+chiptune bleeps. They stretch from five-year-olds counting ducks to
+twelve-year-olds doing two-digit multiplication and matrix reasoning: big
+buttons, nothing to lose, and a star for every question answered right on the
+first go.
+
+**Each player is asked their age once**, and that sets how hard everything is
+— which maths modes even appear, how big the numbers get, and how tricky the
+puzzles are. A child can still nudge the level easier or harder in any menu.
 
 Everything is drawn onto a 320x180 pixel screen and then blown up to fill the
 window, which is what gives it the retro look. The game itself loads no image
@@ -27,6 +31,10 @@ them.)
 </p>
 <p align="center">
   <img src="docs/screenshots/crystal-keys.png" width="420" alt="Crystal Keys, typing the word PHOENIX with the next key lit on an on-screen keyboard">
+  <img src="docs/screenshots/logic-lab.png" width="420" alt="Logic Lab, a matrix puzzle with one cell missing">
+</p>
+<p align="center">
+  <img src="docs/screenshots/story-problem.png" width="420" alt="A story problem naming the player: Juni has 18 marbles and gives away 7">
 </p>
 
 Every screenshot is a real frame from the game, scanlines and all, produced by
@@ -109,13 +117,32 @@ stars. Set `RETRO_ARCADE_SAVE_DIR` to put it anywhere else.
 
 ## The games
 
-**Number Blaster** — four modes, each ten questions long:
+### How age sets the level
+
+One table decides difficulty everywhere, in `retro/levels.py`:
+
+| Tier | Ages | Maths | Reasoning |
+| --- | --- | --- | --- |
+| Starter | 5–6 | Counting, numbers to 10 | Repeating patterns |
+| Growing | 7–8 | Times tables of 2, 5, 10; division; story problems; numbers to 30 | Odd one out, analogies, matrices, sequences |
+| Tricky | 9–10 | Tables to 12×12, division facts, numbers to 150 | Multiply-rule sequences |
+| Expert | 11–12 | Two-digit multiplication, two-step story problems, numbers to 999 | Squares, triangular numbers, Fibonacci |
+
+A five-year-old is never offered division; an eight-year-old is never offered
+counting ducks. The **EASIER / JUST RIGHT / HARDER** buttons in each menu
+shift one tier either way without changing the saved age.
+
+**Number Blaster** — ten questions a round. Which of these appear depends on
+the player's age:
 
 | Mode | What it practises |
 | --- | --- |
-| Count | Counting a group of pictures, 1–15 |
-| Add + | Sums up to 10, 15 or 20 |
+| Count | Counting a group of pictures |
+| Add + | Addition, capped per tier |
 | Take away − | Subtraction, never below zero |
+| Times × | Multiplication, from the 2/5/10 tables up to two-digit |
+| Share ÷ | Division, always exact — built from the answer up |
+| Story | Word problems, using the player's own name |
 | More or less | Comparing two numbers |
 
 **Word Rocket** — a picture appears and the word sits underneath:
@@ -133,6 +160,25 @@ stars. Set `RETRO_ARCADE_SAVE_DIR` to put it anywhere else.
 | Pictures | Repeating patterns (AB, ABB, AAB, ABC) |
 | Colours | The same idea, without any picture naming |
 | Numbers | Counting on and back in 1s, 2s, 5s and 10s |
+
+**Logic Lab** — reasoning puzzles in the style of an IQ test, from about age
+seven up:
+
+| Mode | What it asks |
+| --- | --- |
+| Odd one out | Four figures; three share a property and one does not |
+| Analogy | A is to B as C is to ? |
+| Matrix | A grid where the row sets the shape and the column the colour, with one cell missing |
+| Sequences | Number series: steps, doubling, alternating, squares, triangular numbers, Fibonacci |
+
+The figures are drawn from primitives rather than sprites, so shape, colour
+and size vary independently — that is what lets an item test one property
+while deliberately scrambling the others.
+
+Every item is built to have exactly **one** defensible answer. In odd-one-out
+the properties that are not the point of the puzzle are laid out in pairs, so
+none of them accidentally singles out a second figure. A puzzle with two
+right answers marks a thinking child wrong, which is worse than no puzzle.
 
 **Crystal Keys** — a typing tutor, for around ages 7-9. Four elemental realms,
 which are really keyboard lessons in disguise:
@@ -228,8 +274,10 @@ grid of characters plus a colour key, register it in the `SPRITES` dict, then
 add the word to `WORDS` in `games/word_rocket.py`. Only add words whose
 picture is obvious at that size.
 
-**Change the sums.** `LIMITS` and `ADD_CAP` at the top of
-`games/math_blaster.py` control every number range.
+**Change the sums.** The range tables at the top of `games/math_blaster.py`
+control every number, and `MODES_BY_TIER` decides which modes an age sees.
+
+**Change what counts as which age.** `AGE_BANDS` in `retro/levels.py`.
 
 **Change the patterns.** `UNITS` in `games/pattern_power.py` lists the
 repeating shapes (AB, AAB and so on); add `(0, 1, 0, 2)` or similar for a
@@ -254,6 +302,8 @@ games/math_blaster.py  Number Blaster
 games/word_rocket.py   Word Rocket
 games/pattern_power.py Pattern Power
 games/crystal_keys.py  Crystal Keys, the typing tutor
+games/logic_lab.py     Logic Lab, the reasoning puzzles
+retro/levels.py        Age to difficulty tier, in one place
 retro/app.py           Window, scaling, scene stack, main loop
 retro/ui.py            Buttons, text, panels, starfield, particles
 retro/sprites.py       All the pixel art
@@ -289,6 +339,14 @@ The sound tests inspect the generated waveforms directly, since a synthesis
 bug that produced silence or clipping would be invisible on screen: every
 effect must be audible, must not clip, must match its recipe's duration, and
 must actually be played by some game.
+
+`tests/test_reasoning.py` guards the age ladder and the puzzles: an
+eight-year-old must be offered times tables and never counting ducks, a
+five-year-old must never meet division, division is always exact,
+multiplication genuinely gets harder each tier, story problems use the
+player's name and no gendered pronouns, matrix answers follow both their row
+and their column, analogies repeat the first pair's change, sequences obey
+their own rule — and no odd-one-out has a second defensible answer.
 
 `tests/test_packaging.py` covers the quiet failures: that the `retro-arcade`
 entry point resolves, that the wheel ships every module the game imports,

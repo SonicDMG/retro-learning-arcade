@@ -15,6 +15,8 @@ import json
 import os
 import sys
 
+from . import levels
+
 APP_NAME = "RetroLearningArcade"
 
 
@@ -48,7 +50,7 @@ PROFILES = [
 
 def _blank():
     return {
-        name: {"stars": 0, "best": {}, "played": {}, "crystals": {}}
+        name: {"stars": 0, "best": {}, "played": {}, "crystals": {}, "age": None}
         for name, _ in PROFILES
     }
 
@@ -72,6 +74,9 @@ def load():
                 base[name]["played"] = entry["played"]
             if isinstance(entry.get("crystals"), dict):
                 base[name]["crystals"] = entry["crystals"]
+            age = entry.get("age")
+            if isinstance(age, int) and levels.MIN_AGE <= age <= levels.MAX_AGE:
+                base[name]["age"] = age
     return base
 
 
@@ -99,6 +104,19 @@ class Player:
     def add_stars(self, count):
         self.entry["stars"] = self.stars + count
         save(self.data)
+
+    @property
+    def age(self):
+        """The player's age, or None until they have been asked."""
+        return self.entry.get("age")
+
+    def set_age(self, age):
+        self.entry["age"] = max(levels.MIN_AGE, min(levels.MAX_AGE, int(age)))
+        save(self.data)
+
+    def tier(self, nudge=0):
+        """How hard this player's games should be right now."""
+        return levels.tier_for(self.age, nudge)
 
     @property
     def crystals(self):

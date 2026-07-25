@@ -42,6 +42,33 @@ def text(surface, message, pos, color=palette.WHITE, size=14, align="left", shad
     return rect
 
 
+def wrap(message, size, max_width):
+    """Split a string into lines that each fit inside max_width pixels."""
+    words = str(message).split()
+    lines, current = [], ""
+    for word in words:
+        candidate = f"{current} {word}".strip()
+        if current and text_size(candidate, size)[0] > max_width:
+            lines.append(current)
+            current = word
+        else:
+            current = candidate
+    if current:
+        lines.append(current)
+    return lines
+
+
+def text_block(surface, message, center_x, top, color, size, max_width, line_gap=2):
+    """Draw wrapped, centred text. Returns the y just below the last line."""
+    lines = wrap(message, size, max_width)
+    line_height = text_size("A", size)[1] + line_gap
+    for index, line in enumerate(lines):
+        text(
+            surface, line, (center_x, top + index * line_height), color, size, align="center"
+        )
+    return top + len(lines) * line_height
+
+
 def panel(surface, rect, fill=palette.BG_PANEL, border=palette.PURPLE, width=1):
     """A filled box with a hard 1px border and a dark drop shadow."""
     rect = pygame.Rect(rect)

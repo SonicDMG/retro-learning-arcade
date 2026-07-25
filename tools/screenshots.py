@@ -26,7 +26,13 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import pygame  # noqa: E402
 
 import launcher  # noqa: E402
-from games import crystal_keys, math_blaster, pattern_power, word_rocket  # noqa: E402
+from games import (  # noqa: E402
+    crystal_keys,
+    logic_lab,
+    math_blaster,
+    pattern_power,
+    word_rocket,
+)
 from retro import palette, progress  # noqa: E402
 from retro.app import VIRTUAL_H, VIRTUAL_W, App  # noqa: E402
 
@@ -65,9 +71,11 @@ def posed_scene(app, module, scene_factory, question):
     return scene
 
 
-def demo_player(stars=42):
+def demo_player(stars=42, age=8):
     player = progress.Player(progress.PROFILES[0][0])
-    player.entry["stars"] = stars  # In memory only; never written to disk.
+    # In memory only; never written to disk.
+    player.entry["stars"] = stars
+    player.entry["age"] = age
     return player
 
 
@@ -82,15 +90,30 @@ def build():
     arcade = launcher.ArcadeScene(app, player)
     shots["arcade"] = render(app, arcade)
 
-    # Number Blaster, mid-round, on an addition question.
+    # Number Blaster, mid-round, on a times-table question.
     math_scene = posed_scene(
         app,
         math_blaster,
-        lambda: math_blaster.MathRoundScene(app, player, "add", 2),
-        {"kind": "expr", "prompt": "3 + 4 = ?", "answer": 7, "choices": [6, 7, 9]},
+        lambda: math_blaster.MathRoundScene(app, player, "multiply", 2),
+        {"kind": "expr", "prompt": "7 x 6 = ?", "answer": 42, "choices": [42, 36, 48]},
     )
     math_scene.index = 4
     shots["number-blaster"] = render(app, math_scene)
+
+    # A story problem, which is where the player's own name turns up.
+    story_scene = posed_scene(
+        app,
+        math_blaster,
+        lambda: math_blaster.MathRoundScene(app, player, "word", 2),
+        {
+            "kind": "story",
+            "prompt": "JUNI HAS 18 MARBLES AND GIVES AWAY 7. HOW MANY ARE LEFT?",
+            "answer": 11,
+            "choices": [9, 11, 13],
+        },
+    )
+    story_scene.index = 6
+    shots["story-problem"] = render(app, story_scene)
 
     # Number Blaster's counting mode, which shows off the pixel art.
     count_scene = posed_scene(
@@ -144,6 +167,16 @@ def build():
     typing.started_at = time.monotonic() - 30  # Half a minute in, for a real WPM.
     shots["crystal-keys"] = render(app, typing)
 
+    # Logic Lab, on a matrix item -- the classic IQ-test shape.
+    matrix_scene = posed_scene(
+        app,
+        logic_lab,
+        lambda: logic_lab.LogicRoundScene(app, player, "matrix", 3),
+        logic_lab.make_question("matrix", 3),
+    )
+    matrix_scene.index = 3
+    shots["logic-lab"] = render(app, matrix_scene)
+
     for name, surface in shots.items():
         path = os.path.join(OUT_DIR, f"{name}.png")
         pygame.image.save(surface, path)
@@ -156,6 +189,7 @@ def build():
         render(app, word_scene, scale=banner_scale, frames=1),
         render(app, pattern_scene, scale=banner_scale, frames=1),
         render(app, typing, scale=banner_scale, frames=1),
+        render(app, matrix_scene, scale=banner_scale, frames=1),
     ]
     gap = 8
     width = sum(panel.get_width() for panel in panels) + gap * (len(panels) - 1)
