@@ -60,7 +60,21 @@ retro-arcade
 ```
 
 `uv.lock` pins the exact pygame build, so every machine gets the same one.
-Don't have uv? `curl -LsSf https://astral.sh/uv/install.sh | sh`.
+
+#### Installing uv
+
+```sh
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+or, if you use Homebrew, `brew install uv`. It installs to `~/.local/bin`,
+which may not be on your `PATH` until you open a new terminal window — so if
+`uv` is "not found" straight after installing, that is why. `run.command`
+knows about this and looks there directly.
+
+You don't have to install it by hand: double-clicking `run.command` on a Mac
+without uv offers to fetch it for you, and falls back to a plain virtual
+environment if you say no.
 
 ### On the Mac, without touching a terminal
 
