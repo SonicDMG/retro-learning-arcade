@@ -15,6 +15,7 @@ the README is what a player sees.
 import os
 import random
 import sys
+import time
 
 # Headless by default: this only needs a surface to draw on.
 os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
@@ -25,7 +26,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import pygame  # noqa: E402
 
 import launcher  # noqa: E402
-from games import math_blaster, pattern_power, word_rocket  # noqa: E402
+from games import crystal_keys, math_blaster, pattern_power, word_rocket  # noqa: E402
 from retro import palette, progress  # noqa: E402
 from retro.app import VIRTUAL_H, VIRTUAL_W, App  # noqa: E402
 
@@ -133,6 +134,16 @@ def build():
     pattern_scene.index = 5
     shots["pattern-power"] = render(app, pattern_scene)
 
+    # Crystal Keys, part way through a fire word.
+    typing = crystal_keys.TypingRoundScene(app, player, "fire")
+    typing.prompts = ["ember", "spark", "torch", "phoenix", "blaze", "glow", "magma", "ash"]
+    typing.index = 3
+    typing.typed = 3
+    typing.clean = 3
+    typing.keystrokes, typing.hits = 40, 39
+    typing.started_at = time.monotonic() - 30  # Half a minute in, for a real WPM.
+    shots["crystal-keys"] = render(app, typing)
+
     for name, surface in shots.items():
         path = os.path.join(OUT_DIR, f"{name}.png")
         pygame.image.save(surface, path)
@@ -144,6 +155,7 @@ def build():
         render(app, math_scene, scale=banner_scale, frames=1),
         render(app, word_scene, scale=banner_scale, frames=1),
         render(app, pattern_scene, scale=banner_scale, frames=1),
+        render(app, typing, scale=banner_scale, frames=1),
     ]
     gap = 8
     width = sum(panel.get_width() for panel in panels) + gap * (len(panels) - 1)

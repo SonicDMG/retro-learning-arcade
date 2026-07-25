@@ -8,6 +8,7 @@ Run with:  python3 -m unittest discover tests
 """
 
 import os
+import string
 import sys
 import unittest
 
@@ -17,7 +18,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
 os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
 
-from games import math_blaster, pattern_power, word_rocket  # noqa: E402
+from games import crystal_keys, math_blaster, pattern_power, word_rocket  # noqa: E402
 from retro import sprites  # noqa: E402
 
 REPEATS = 400
@@ -164,6 +165,49 @@ class TestPatternQuestions(unittest.TestCase):
             question = pattern_power.make_question("picture")
             for name in list(question["items"]) + list(question["choices"]):
                 self.assertIn(name, sprites.SPRITES)
+
+
+class TestTypingLessons(unittest.TestCase):
+    """The whole point of the element ladder is that keys arrive in order."""
+
+    def test_lessons_only_use_keys_the_element_has_taught(self):
+        for key, label, _, _, allowed in crystal_keys.ELEMENTS:
+            for prompt in crystal_keys.LESSONS[key]:
+                for letter in prompt:
+                    self.assertIn(
+                        letter,
+                        allowed,
+                        f"{label} lesson '{prompt}' needs '{letter}', which that "
+                        "element has not introduced yet",
+                    )
+
+    def test_earth_is_strictly_home_row(self):
+        for prompt in crystal_keys.LESSONS["earth"]:
+            for letter in prompt:
+                self.assertIn(letter, crystal_keys.HOME_ROW, prompt)
+
+    def test_prompts_are_lowercase_letters_only(self):
+        for lesson in crystal_keys.LESSONS.values():
+            for prompt in lesson:
+                self.assertTrue(prompt.isalpha(), prompt)
+                self.assertEqual(prompt, prompt.lower(), prompt)
+
+    def test_every_lesson_can_fill_a_round(self):
+        for key, lesson in crystal_keys.LESSONS.items():
+            self.assertGreaterEqual(len(lesson), crystal_keys.ROUND_LENGTH, key)
+            self.assertEqual(len(lesson), len(set(lesson)), f"{key} has duplicates")
+
+    def test_keyboard_shows_every_letter(self):
+        on_screen = set("".join(crystal_keys.KEYBOARD_ROWS))
+        self.assertEqual(on_screen, set(string.ascii_lowercase))
+
+    def test_element_key_sets_only_widen(self):
+        previous = set()
+        for _, label, icon, _, allowed in crystal_keys.ELEMENTS:
+            self.assertIn(icon, sprites.SPRITES, label)
+            # Each realm must keep everything the previous one taught.
+            self.assertTrue(previous <= set(allowed), label)
+            previous = set(allowed)
 
 
 class TestSpriteArt(unittest.TestCase):

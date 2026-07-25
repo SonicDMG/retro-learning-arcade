@@ -20,7 +20,10 @@ PROFILES = [
 
 
 def _blank():
-    return {name: {"stars": 0, "best": {}, "played": {}} for name, _ in PROFILES}
+    return {
+        name: {"stars": 0, "best": {}, "played": {}, "crystals": {}}
+        for name, _ in PROFILES
+    }
 
 
 def load():
@@ -40,6 +43,8 @@ def load():
                 base[name]["best"] = entry["best"]
             if isinstance(entry.get("played"), dict):
                 base[name]["played"] = entry["played"]
+            if isinstance(entry.get("crystals"), dict):
+                base[name]["crystals"] = entry["crystals"]
     return base
 
 
@@ -67,6 +72,19 @@ class Player:
     def add_stars(self, count):
         self.entry["stars"] = self.stars + count
         save(self.data)
+
+    @property
+    def crystals(self):
+        """Elemental crystals, keyed by element name."""
+        return self.entry.setdefault("crystals", {})
+
+    def add_crystals(self, element, count):
+        crystals = self.crystals
+        crystals[element] = crystals.get(element, 0) + count
+        save(self.data)
+
+    def total_crystals(self):
+        return sum(self.crystals.values())
 
     def record_round(self, game_key, correct, total):
         """Remember the best score for a game and bump the play counter."""

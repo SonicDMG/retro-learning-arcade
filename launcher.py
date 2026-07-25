@@ -8,7 +8,7 @@ import sys
 
 import pygame
 
-from games import math_blaster, pattern_power, word_rocket
+from games import crystal_keys, math_blaster, pattern_power, word_rocket
 from retro import palette, progress, sfx, sprites, ui
 from retro.app import App, Scene
 
@@ -16,6 +16,7 @@ GAMES = [
     ("NUMBER BLASTER", "COUNT AND ADD", "rocket", palette.GREEN, math_blaster.launch),
     ("WORD ROCKET", "LETTERS", "book", palette.CYAN, word_rocket.launch),
     ("PATTERN POWER", "WHAT'S NEXT?", "star", palette.MAGENTA, pattern_power.launch),
+    ("CRYSTAL KEYS", "TYPING", "crystal", palette.PURPLE, crystal_keys.launch),
 ]
 
 
@@ -109,15 +110,24 @@ class ArcadeScene(Scene):
         self.time = 0.0
         self.starfield = ui.Starfield(320, 180, count=50, speed=9)
         self.buttons = []
+        # Two by two, so a fifth game later just needs another row.
         for index, (title, _, sprite, color, _) in enumerate(GAMES):
-            rect = pygame.Rect(12 + index * 100, 46, 96, 66)
+            column, row = index % 2, index // 2
+            rect = pygame.Rect(20 + column * 148, 38 + row * 54, 136, 50)
             self.buttons.append(
                 ui.Button(
-                    rect, title, color, sprite=sprite, hotkey=str(index + 1), text_size=12, value=index
+                    rect,
+                    title,
+                    color,
+                    sprite=sprite,
+                    hotkey=str(index + 1),
+                    text_size=12,
+                    value=index,
+                    sprite_scale=2,
                 )
             )
         self.switch_button = ui.Button(
-            (96, 136, 128, 22), "SWITCH PLAYER", palette.PURPLE, text_size=14
+            (96, 146, 128, 20), "SWITCH PLAYER", palette.PURPLE, text_size=14
         )
 
     def handle_event(self, event):
@@ -126,7 +136,9 @@ class ArcadeScene(Scene):
                 sfx.play("back")
                 self.app.pop()
                 return
-            for index, key in enumerate((pygame.K_1, pygame.K_2, pygame.K_3)):
+            for index, key in enumerate(
+                (pygame.K_1, pygame.K_2, pygame.K_3, pygame.K_4)
+            ):
                 if event.key == key and index < len(GAMES):
                     self._start(index)
                     return
@@ -165,22 +177,25 @@ class ArcadeScene(Scene):
             align="center",
         )
         ui.star_counter(surface, self.player.stars, (4, 3))
+        crystals = self.player.total_crystals()
+        if crystals:
+            sprites.draw(surface, "crystal", (272, 2))
+            ui.text(surface, f"x{crystals}", (290, 6), palette.MAGENTA, 14)
+
+        hovered = None
         for index, button in enumerate(self.buttons):
             button.draw(surface)
-            ui.text(
-                surface,
-                GAMES[index][1],
-                (button.rect.centerx, button.rect.bottom + 3),
-                palette.GRAY,
-                12,
-                align="center",
-            )
+            if button.hover:
+                hovered = GAMES[index][1]
         self.switch_button.draw(surface)
+
+        # The shelf is too tight for a caption under every tile, so the
+        # hovered game explains itself down here instead.
         ui.text(
             surface,
-            "F = FULL SCREEN   M = MUTE   ESC = BACK",
+            hovered or "F = FULL SCREEN   M = MUTE   ESC = BACK",
             (160, 168),
-            palette.DARK_GRAY,
+            palette.GRAY if hovered else palette.DARK_GRAY,
             12,
             align="center",
         )

@@ -357,6 +357,116 @@ BOOK = {
     ],
 }
 
+FLAME = {
+    "key": {"r": RED, "o": ORANGE, "y": YELLOW, "w": WHITE},
+    "rows": [
+        "................",
+        ".......o........",
+        "......oro.......",
+        "......orro......",
+        ".....orrro......",
+        ".....orrrro.....",
+        "....orrryro.....",
+        "....orryyyro....",
+        "...orryyyyyro...",
+        "...orryywyyro...",
+        "..orryywwyyrro..",
+        "..orryywwyyrro..",
+        "..orrryyyyrrro..",
+        "...oorrrrrroo...",
+        "....oorrrroo....",
+        ".....oooooo.....",
+    ],
+}
+
+DROPLET = {
+    "key": {"b": BLUE, "c": CYAN, "w": WHITE},
+    "rows": [
+        "................",
+        ".......cc.......",
+        ".......cc.......",
+        "......cbbc......",
+        "......cbbc......",
+        ".....cbbbbc.....",
+        ".....cbbbbc.....",
+        "....cbbwbbbc....",
+        "....cbbwbbbc....",
+        "...cbbwwbbbbc...",
+        "...cbbbbbbbbc...",
+        "...cbbbbbbbbc...",
+        "....cbbbbbbc....",
+        ".....cbbbbc.....",
+        "......cccc......",
+        "................",
+    ],
+}
+
+LEAF = {
+    "key": {"g": GREEN, "d": (40, 150, 80), "b": BROWN},
+    "rows": [
+        "................",
+        "............ggg.",
+        "..........ggggg.",
+        ".........gggdgg.",
+        "........ggggdgg.",
+        ".......gggggdgg.",
+        "......gggggdggg.",
+        ".....gggggdgggg.",
+        "....gggggdggggg.",
+        "...gggggdgggggg.",
+        "..ggggdgggggg...",
+        "..gggdgggg......",
+        ".bbgdggg........",
+        ".bb.............",
+        "bb..............",
+        "................",
+    ],
+}
+
+CLOUD = {
+    "key": {"w": WHITE, "g": GRAY},
+    "rows": [
+        "................",
+        "................",
+        "................",
+        ".....wwww.......",
+        "....wwwwww......",
+        "...wwwwwwww.....",
+        "..wwwwwwwwww....",
+        ".wwwwwwwwwwwww..",
+        "wwwwwwwwwwwwwwww",
+        ".gggggggggggggg.",
+        "..gggggggggggg..",
+        "................",
+        "................",
+        "................",
+        "................",
+        "................",
+    ],
+}
+
+CRYSTAL = {
+    "key": {"p": PURPLE, "m": MAGENTA, "w": WHITE},
+    "rows": [
+        "................",
+        ".......pp.......",
+        "......pmmp......",
+        ".....pmmmmp.....",
+        ".....pmwmmp.....",
+        "....pmwmmmmp....",
+        "....pmwmmmmp....",
+        "....pmwmmmmp....",
+        "....pmwmmmmp....",
+        "....pmmmmmmp....",
+        ".....pmmmmp.....",
+        ".....pmmmmp.....",
+        "......pmmp......",
+        "......pmmp......",
+        ".......pp.......",
+        "................",
+    ],
+}
+
 SPRITES = {
     "cat": CAT,
     "dog": DOG,
@@ -373,6 +483,11 @@ SPRITES = {
     "rocket": ROCKET,
     "apple": APPLE,
     "book": BOOK,
+    "flame": FLAME,
+    "droplet": DROPLET,
+    "leaf": LEAF,
+    "cloud": CLOUD,
+    "crystal": CRYSTAL,
 }
 
 _cache = {}

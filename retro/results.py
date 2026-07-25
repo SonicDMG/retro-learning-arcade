@@ -13,7 +13,9 @@ from .app import Scene
 class ResultsScene(Scene):
     """Shown after a round. on_replay(app) starts a fresh round of the game."""
 
-    def __init__(self, app, player, game_key, title, correct, total, on_replay):
+    def __init__(
+        self, app, player, game_key, title, correct, total, on_replay, detail=None
+    ):
         super().__init__(app)
         self.player = player
         self.game_key = game_key
@@ -21,6 +23,8 @@ class ResultsScene(Scene):
         self.correct = correct
         self.total = total
         self.on_replay = on_replay
+        # Optional extra line, e.g. typing accuracy and speed.
+        self.detail = detail
         self.particles = ui.Particles()
         self.stars_field = ui.Starfield(320, 180, count=40, speed=8)
         self.time = 0.0
@@ -109,10 +113,12 @@ class ResultsScene(Scene):
             ui.text(
                 surface, "NEW BEST SCORE!", (160, 110), palette.MAGENTA, 18, align="center"
             )
+        if self.detail:
+            ui.text(surface, self.detail, (160, 122), palette.CYAN, 14, align="center")
         ui.text(
             surface,
             f"TOTAL STARS: {self.player.stars}",
-            (160, 130),
+            (160, 134) if self.detail else (160, 130),
             palette.WHITE,
             14,
             align="center",
