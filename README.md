@@ -119,6 +119,33 @@ over".
 Stars are saved per player in `saves/progress.json`, along with each game's
 best score. Delete that file to reset everything.
 
+### Sound
+
+Every effect is a square, triangle, saw or noise wave built from scratch at
+startup in `retro/sfx.py` — there are no audio files to lose. The set is small
+on purpose, so each one means exactly one thing:
+
+| Sound | Fires on |
+| --- | --- |
+| `click` / `select` / `back` | Moving around the menus |
+| `correct` | A right answer, rising three notes |
+| `wrong` | A wrong answer — soft and low, never a buzzer |
+| `pop` | A letter dropping into place in Word Rocket |
+| `launch` | The rocket taking off after a correct sum |
+| `star` | Three correct in a row, so a streak is audible |
+| `charge` | A crystal finishing charging in Crystal Keys |
+| `record` | A new best score, once the stars finish landing |
+| `fanfare` | The end of a round |
+
+Two things climb rather than repeat: each letter typed in Crystal Keys plays
+the next note of a rising pentatonic run, so a word resolves like a little
+tune, and the stars on the results screen chime a step higher each, so a big
+score sounds bigger than a small one.
+
+Failure is deliberately gentle. The wrong-answer tone is a low triangle wave,
+quieter than the success sounds, because a harsh buzzer teaches a child to
+fear being wrong. `M` mutes everything.
+
 ### Keys
 
 | Key | Does |
@@ -194,3 +221,8 @@ They also guard the typing ladder: no lesson may use a key its element hasn't
 introduced yet, and Earth stays strictly home row. That check earned its keep
 immediately — it caught "river" and "stream" sitting in the Water lesson, both
 of which need bottom-row keys the child hasn't met at that point.
+
+The sound tests inspect the generated waveforms directly, since a synthesis
+bug that produced silence or clipping would be invisible on screen: every
+effect must be audible, must not clip, must match its recipe's duration, and
+must actually be played by some game.

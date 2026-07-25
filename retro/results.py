@@ -31,6 +31,7 @@ class ResultsScene(Scene):
         self.revealed = 0          # Stars shown so far, revealed one by one.
         self.reveal_timer = 0.6
         self.is_record = False
+        self._record_sting = False  # The record fanfare only plays once.
         self.buttons = [
             ui.Button((60, 146, 90, 26), "PLAY AGAIN", palette.GREEN, hotkey="1"),
             ui.Button((170, 146, 90, 26), "MENU", palette.CYAN, hotkey="2"),
@@ -44,6 +45,7 @@ class ResultsScene(Scene):
         self.time = 0.0
         self.revealed = 0
         self.reveal_timer = 0.6
+        self._record_sting = False
         self.particles.confetti(320, count=50)
         self.is_record = self.player.record_round(self.game_key, self.correct, self.total)
         self.player.add_stars(self.earned)
@@ -80,7 +82,12 @@ class ResultsScene(Scene):
             if self.reveal_timer <= 0:
                 self.revealed += 1
                 self.reveal_timer = 0.16
-                sfx.play("star")
+                # Each star chimes a step higher, so a big score sounds big.
+                sfx.play_step(self.revealed - 1)
+        elif self.is_record and not self._record_sting:
+            # The record banner appears once the stars finish; sting with it.
+            self._record_sting = True
+            sfx.play("record")
 
     def draw(self, surface):
         surface.fill(palette.BG_DEEP)

@@ -277,7 +277,8 @@ class TypingRoundScene(Scene):
         if char == expected:
             self.hits += 1
             self.typed += 1
-            sfx.play("pop")
+            # Each letter is a step up the scale, so a word resolves musically.
+            sfx.play_step(self.typed - 1)
             self._spark()
             if self.typed >= len(self.prompt):
                 self._finish_prompt()
@@ -337,7 +338,7 @@ class TypingRoundScene(Scene):
         if self.clean == ROUND_LENGTH:
             crystals += 1
         self.player.add_crystals(self.element, crystals)
-        sfx.play("star")
+        sfx.play("charge")  # The crystal finishing charging.
         detail = f"{self.accuracy}% ACCURATE   {self.wpm} WPM   +{crystals} CRYSTAL"
         if crystals != 1:
             detail += "S"

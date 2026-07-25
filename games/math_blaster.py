@@ -205,7 +205,9 @@ class MathRoundScene(Scene):
             self.rocket = [button.rect.centerx, button.rect.top, -150.0]
             self.feedback = random.choice(["YES!", "NICE!", "WOW!", "GOT IT!"])
             sfx.play("correct")
-            sfx.play("launch")
+            # Every third in a row gets a flourish instead of the usual rocket,
+            # so a streak is something you hear and not just a label.
+            sfx.play("star" if self.streak and self.streak % 3 == 0 else "launch")
         else:
             self.attempts += 1
             self.streak = 0

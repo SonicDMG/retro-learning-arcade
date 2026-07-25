@@ -8,6 +8,7 @@ Run with:  python3 -m unittest discover tests
 """
 
 import os
+import re
 import string
 import sys
 import unittest
@@ -19,7 +20,7 @@ os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
 os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
 
 from games import crystal_keys, math_blaster, pattern_power, word_rocket  # noqa: E402
-from retro import sprites  # noqa: E402
+from retro import sfx, sprites  # noqa: E402
 
 REPEATS = 400
 
@@ -208,6 +209,89 @@ class TestTypingLessons(unittest.TestCase):
             # Each realm must keep everything the previous one taught.
             self.assertTrue(previous <= set(allowed), label)
             previous = set(allowed)
+
+
+class TestSoundEffects(unittest.TestCase):
+    """Nobody can hear a regression here, so check the waveforms directly.
+
+    A synthesis bug that produced silence, clipping or a zero-length buffer
+    would be completely invisible on screen.
+    """
+
+    def test_every_recipe_is_audible(self):
+        for name, (notes, shape, volume) in sfx._RECIPES.items():
+            samples = sfx.build_samples(notes, shape, volume)
+            self.assertGreater(len(samples), 0, name)
+            peak = max(abs(value) for value in samples)
+            self.assertGreater(peak, 3000, f"{name} is inaudibly quiet")
+
+    def test_nothing_clips_or_overflows_16_bit(self):
+        for name, (notes, shape, volume) in sfx._RECIPES.items():
+            samples = sfx.build_samples(notes, shape, volume)
+            peak = max(abs(value) for value in samples)
+            self.assertLessEqual(peak, 32767, f"{name} overflows int16")
+            # Sustained full-scale output is the signature of clipping.
+            at_ceiling = sum(1 for value in samples if abs(value) >= 32700)
+            self.assertLess(
+                at_ceiling, len(samples) * 0.5, f"{name} sounds clipped"
+            )
+
+    def test_durations_match_the_recipes(self):
+        for name, (notes, shape, volume) in sfx._RECIPES.items():
+            expected = sum(ms for _, ms in notes) / 1000.0 * sfx.SAMPLE_RATE
+            samples = sfx.build_samples(notes, shape, volume)
+            self.assertAlmostEqual(
+                len(samples), expected, delta=len(notes) + 1, msg=name
+            )
+
+    def test_rests_are_silent(self):
+        samples = sfx.build_samples([(0, 50)], "square", 0.3)
+        self.assertTrue(all(value == 0 for value in samples))
+
+    def test_every_wave_shape_produces_sound(self):
+        for shape in ("square", "triangle", "saw", "noise", "sine"):
+            samples = sfx.build_samples([(440, 60)], shape, 0.3)
+            peak = max(abs(value) for value in samples)
+            self.assertGreater(peak, 3000, shape)
+
+    def test_step_run_rises(self):
+        self.assertEqual(sfx._PENTATONIC, sorted(sfx._PENTATONIC))
+
+    def test_named_effects_all_exist(self):
+        """Every sfx.play("...") in the games must name a real recipe."""
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        used = set()
+        for folder in (".", "games", "retro"):
+            directory = os.path.join(root, folder)
+            for filename in os.listdir(directory):
+                if not filename.endswith(".py"):
+                    continue
+                with open(os.path.join(directory, filename), encoding="utf-8") as handle:
+                    used.update(re.findall(r'sfx\.play\("([a-z_]+)"\)', handle.read()))
+        self.assertTrue(used, "found no sound calls at all")
+        for name in used:
+            self.assertIn(name, sfx._RECIPES, f'sfx.play("{name}") has no recipe')
+
+    def test_no_unused_recipes(self):
+        """A recipe nobody plays is dead weight; keep the set honest.
+
+        sfx.py itself is excluded: a recipe's own definition would otherwise
+        count as a use and this check would pass no matter what.
+        """
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        text = ""
+        for folder in (".", "games", "retro"):
+            directory = os.path.join(root, folder)
+            for filename in os.listdir(directory):
+                if not filename.endswith(".py") or filename == "sfx.py":
+                    continue
+                with open(os.path.join(directory, filename), encoding="utf-8") as handle:
+                    text += handle.read()
+        for name in sfx._RECIPES:
+            # assertTrue, not assertIn: assertIn would print every source file.
+            self.assertTrue(
+                f'"{name}"' in text, f"recipe '{name}' is defined but never played"
+            )
 
 
 class TestSpriteArt(unittest.TestCase):

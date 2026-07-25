@@ -54,11 +54,12 @@ def _wave_sample(shape, phase):
     return math.sin(phase * math.tau)
 
 
-def _render_notes(notes, shape="square", volume=0.35):
-    """Render a list of (frequency_hz, duration_ms) into a Sound.
+def build_samples(notes, shape="square", volume=0.35):
+    """Render a list of (frequency_hz, duration_ms) into 16-bit samples.
 
     A frequency of 0 is a rest. Each note gets a short attack and a decay so
-    the result sounds plucky rather than clicky.
+    the result sounds plucky rather than clicky. Kept separate from the Sound
+    it becomes so the tests can inspect the waveform without an audio device.
     """
     samples = array("h")
     for freq, ms in notes:
@@ -80,7 +81,11 @@ def _render_notes(notes, shape="square", volume=0.35):
             value = _wave_sample(shape, phase) * env * volume
             samples.append(int(max(-1.0, min(1.0, value)) * 32767))
             phase += step
-    return pygame.mixer.Sound(buffer=samples.tobytes())
+    return samples
+
+
+def _render_notes(notes, shape="square", volume=0.35):
+    return pygame.mixer.Sound(buffer=build_samples(notes, shape, volume).tobytes())
 
 
 # Each effect is a recipe, rendered on first use and cached after that.
@@ -93,13 +98,22 @@ _RECIPES = {
     "star": ([(1046, 60), (1318, 60), (1568, 60), (2093, 150)], "square", 0.26),
     "launch": ([(200, 60), (400, 60), (700, 60), (1100, 90)], "saw", 0.22),
     "pop": ([(880, 40), (0, 20), (1200, 40)], "square", 0.22),
-    "boom": ([(120, 220)], "noise", 0.30),
+    "charge": ([(300, 50), (450, 50), (600, 50), (900, 120)], "saw", 0.22),
+    "record": (
+        [(1046, 90), (1318, 90), (1568, 90), (2093, 90), (1568, 70), (2093, 260)],
+        "square",
+        0.28,
+    ),
     "fanfare": (
         [(523, 110), (659, 110), (784, 110), (1046, 240), (784, 90), (1046, 320)],
         "square",
         0.30,
     ),
 }
+
+# A major pentatonic run. Typing a word walks up it, so each correct letter is
+# a step higher than the last -- the reward is hearing the phrase resolve.
+_PENTATONIC = [523, 587, 659, 784, 880, 1046, 1174, 1318, 1568, 1760]
 
 
 def play(name):
@@ -117,4 +131,24 @@ def play(name):
         except pygame.error:
             return
         _cache[name] = sound
+    sound.play()
+
+
+def play_step(step):
+    """Play the step-th note of a rising run, for progress within a task.
+
+    Used for each correct letter typed, so a word sounds like a little tune
+    climbing to a resolution rather than the same blip over and over.
+    """
+    if not _enabled or _muted:
+        return
+    index = max(0, int(step)) % len(_PENTATONIC)
+    key = f"_step{index}"
+    sound = _cache.get(key)
+    if sound is None:
+        try:
+            sound = _render_notes([(_PENTATONIC[index], 55)], "square", 0.22)
+        except pygame.error:
+            return
+        _cache[key] = sound
     sound.play()
