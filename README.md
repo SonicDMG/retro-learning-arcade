@@ -32,21 +32,51 @@ them.)
 Every screenshot is a real frame from the game, scanlines and all, produced by
 `tools/screenshots.py`. Re-run it after a UI change to refresh them.
 
-## Running it on the Mac
+## Running it
+
+### With uv (recommended)
+
+[uv](https://docs.astral.sh/uv/) handles Python and pygame for you, so there
+is no virtual environment to think about. Play without cloning anything:
+
+```sh
+uvx --from git+https://github.com/SonicDMG/retro-learning-arcade retro-arcade
+```
+
+From a clone, it's one command — uv reads `pyproject.toml`, installs what's
+missing and starts the game:
+
+```sh
+git clone https://github.com/SonicDMG/retro-learning-arcade.git
+cd retro-learning-arcade
+uv run retro-arcade
+```
+
+To keep it on the machine as a normal command:
+
+```sh
+uv tool install git+https://github.com/SonicDMG/retro-learning-arcade
+retro-arcade
+```
+
+`uv.lock` pins the exact pygame build, so every machine gets the same one.
+Don't have uv? `curl -LsSf https://astral.sh/uv/install.sh | sh`.
+
+### On the Mac, without touching a terminal
 
 1. Copy this folder anywhere you like (Documents is fine).
 2. Double-click **`run.command`**.
 
-The first run takes a minute while it builds a private virtual environment and
-installs pygame; after that it starts straight away.
+It uses uv if it finds it, and otherwise falls back to building a plain
+virtual environment with the system Python — so it works either way. The
+first run takes a minute; after that it starts straight away.
 
 If macOS refuses to open it ("unidentified developer"), right-click
 `run.command` → **Open** → **Open**. That only has to be done once.
 
-Prefer the terminal?
+### Without uv
 
 ```sh
-cd kids-learning-apps
 python3 -m venv .venv
 ./.venv/bin/python -m pip install -r requirements.txt
 ./.venv/bin/python launcher.py
@@ -54,6 +84,14 @@ python3 -m venv .venv
 
 macOS ships with a usable `python3`; if it's missing, the launcher will say so
 and point at python.org.
+
+### Where progress is saved
+
+Run from a clone, the save file sits in `saves/progress.json` next to the
+code. Installed as a tool, it goes to the platform's user data directory
+(`~/Library/Application Support/RetroLearningArcade` on macOS) — writing
+inside the installed package would mean a reinstall quietly wiped the kids'
+stars. Set `RETRO_ARCADE_SAVE_DIR` to put it anywhere else.
 
 ## The games
 
@@ -203,12 +241,14 @@ retro/palette.py       Colours
 tests/                 Checks on the question generators and the art
 tools/screenshots.py   Regenerates the images in this README
 docs/screenshots/      Those images
+pyproject.toml         Dependencies and the retro-arcade command
+uv.lock                The exact pygame build, pinned
 ```
 
 ## Tests
 
 ```sh
-python3 -m unittest discover tests
+uv run python -m unittest discover tests   # or plain: python3 -m unittest discover tests
 ```
 
 These cover the parts that would quietly teach a child something wrong: the
@@ -226,3 +266,8 @@ The sound tests inspect the generated waveforms directly, since a synthesis
 bug that produced silence or clipping would be invisible on screen: every
 effect must be audible, must not clip, must match its recipe's duration, and
 must actually be played by some game.
+
+`tests/test_packaging.py` covers the quiet failures: that the `retro-arcade`
+entry point resolves, that the wheel ships every module the game imports,
+that `requirements.txt` hasn't drifted from `pyproject.toml`, and that an
+installed copy never writes a child's progress inside site-packages.

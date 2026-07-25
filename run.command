@@ -1,12 +1,21 @@
 #!/bin/bash
-# Double-click this file in Finder to play. It sets up a private virtual
-# environment on first run, then launches the arcade every time after that.
+# Double-click this file in Finder to play.
+#
+# If uv is installed it does the work: it resolves pygame and starts the game
+# in one step, with no virtual environment to manage. Otherwise this falls
+# back to a plain venv, so the game still runs on a Mac that has nothing but
+# the system Python.
 
 cd "$(dirname "$0")" || exit 1
 
+if command -v uv >/dev/null 2>&1; then
+  exec uv run retro-arcade
+fi
+
 if ! command -v python3 >/dev/null 2>&1; then
   echo "Python 3 is not installed."
-  echo "Install it from https://www.python.org/downloads/macos/ and try again."
+  echo "Install it from https://www.python.org/downloads/macos/ and try again,"
+  echo "or install uv from https://docs.astral.sh/uv/ for a one-step setup."
   echo
   read -r -p "Press Return to close..."
   exit 1

@@ -1,14 +1,41 @@
-"""Per-player progress, stored as one small JSON file next to the app.
+"""Per-player progress, stored as one small JSON file.
 
 Kids collect stars. Nothing here can fail loudly: a missing or corrupt save
 file is treated as "brand new player" rather than an error, because a crash
 at launch is far worse than a lost star count.
+
+Where the file lives depends on how the game was started. Run from a checkout
+it sits in `saves/` next to the code, which keeps it obvious and easy to
+delete. Installed as a package -- `uvx`, `pip install` -- it goes to the
+platform's user data directory instead, because writing into site-packages
+would put a child's progress somewhere that a reinstall quietly erases.
 """
 
 import json
 import os
+import sys
 
-SAVE_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "saves")
+APP_NAME = "RetroLearningArcade"
+
+
+def _default_save_dir():
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    # A checkout has project files next to the packages; an install does not.
+    for marker in ("pyproject.toml", ".git"):
+        if os.path.exists(os.path.join(root, marker)):
+            return os.path.join(root, "saves")
+    if sys.platform == "darwin":
+        return os.path.expanduser(f"~/Library/Application Support/{APP_NAME}")
+    if os.name == "nt":
+        base = os.environ.get("APPDATA") or os.path.expanduser("~")
+        return os.path.join(base, APP_NAME)
+    base = os.environ.get("XDG_DATA_HOME") or os.path.expanduser("~/.local/share")
+    return os.path.join(base, "retro-learning-arcade")
+
+
+# RETRO_ARCADE_SAVE_DIR overrides everything, which is handy for testing and
+# for putting one shared save file on a family machine.
+SAVE_DIR = os.environ.get("RETRO_ARCADE_SAVE_DIR") or _default_save_dir()
 SAVE_PATH = os.path.join(SAVE_DIR, "progress.json")
 
 # Fixed profile slots. Kids pick an avatar instead of typing a name.

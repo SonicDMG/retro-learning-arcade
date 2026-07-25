@@ -3,3 +3,9 @@ saves/
 __pycache__/
 *.pyc
 .DS_Store
+
+# Build output. uv.lock is committed on purpose: it pins the exact pygame
+# build, so the game installs the same way on every machine.
+dist/
+build/
+*.egg-info/

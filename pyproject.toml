@@ -1,0 +1,27 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "retro-learning-arcade"
+version = "1.1.0"
+description = "Retro 8-bit learning games for kids: maths, phonics, patterns and typing"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+keywords = ["kids", "education", "games", "pygame", "typing-tutor", "retro"]
+dependencies = ["pygame>=2.5,<3"]
+
+[project.urls]
+Homepage = "https://github.com/SonicDMG/retro-learning-arcade"
+
+[project.scripts]
+retro-arcade = "launcher:main"
+
+# The playable modules. They stay at the repo root so that a plain
+# `python3 launcher.py` keeps working for anyone without uv installed.
+[tool.hatch.build.targets.wheel]
+only-include = ["retro", "games", "launcher.py"]
+
+[tool.hatch.build.targets.sdist]
+include = ["retro", "games", "launcher.py", "tools", "tests", "README.md"]
