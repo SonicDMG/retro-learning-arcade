@@ -57,6 +57,7 @@ def _blank():
             "crystals": {},
             "age": None,
             "hand_guide": True,
+            "nudge": 0,
         }
         for name, _ in PROFILES
     }
@@ -86,6 +87,9 @@ def load():
                 base[name]["age"] = age
             if isinstance(entry.get("hand_guide"), bool):
                 base[name]["hand_guide"] = entry["hand_guide"]
+            nudge = entry.get("nudge")
+            if isinstance(nudge, int) and nudge in levels.NUDGES:
+                base[name]["nudge"] = nudge
     return base
 
 
@@ -126,6 +130,18 @@ class Player:
     def tier(self, nudge=0):
         """How hard this player's games should be right now."""
         return levels.tier_for(self.age, nudge)
+
+    @property
+    def nudge(self):
+        """The player's own EASIER/JUST RIGHT/HARDER choice, remembered
+        between visits so picking HARDER once actually sticks."""
+        return self.entry.get("nudge", 0)
+
+    def set_nudge(self, nudge):
+        if nudge not in levels.NUDGES:
+            nudge = 0
+        self.entry["nudge"] = nudge
+        save(self.data)
 
     @property
     def hand_guide(self):

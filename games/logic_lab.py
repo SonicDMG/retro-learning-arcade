@@ -541,7 +541,7 @@ class LogicMenuScene(Scene):
     def __init__(self, app, player):
         super().__init__(app)
         self.player = player
-        self.nudge = 0
+        self.nudge = player.nudge
         self.time = 0.0
         self.starfield = ui.Starfield(320, 180, count=40, speed=7)
         self.buttons = []
@@ -576,6 +576,7 @@ class LogicMenuScene(Scene):
         from retro import progress
 
         self.player = progress.Player(self.player.name)
+        self.nudge = self.player.nudge
         self._build_modes()
 
     def handle_event(self, event):
@@ -596,6 +597,7 @@ class LogicMenuScene(Scene):
         for button in self.nudge_buttons:
             if button.handle_event(event):
                 self.nudge = button.value
+                self.player.set_nudge(button.value)
                 sfx.play("click")
                 return
 

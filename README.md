@@ -146,7 +146,11 @@ the player's age:
 | Story | Word problems, using the player's own name |
 | More or less | Comparing two numbers |
 
-**Word Rocket** — a picture appears and the word sits underneath:
+**Word Rocket** — a picture appears and the word sits underneath. The tier
+sets the word pool, how many letters are blanked out, and how many letter
+choices are offered — a Starter sees short 3-letter words with one blank
+and three choices, an Expert sees longer words (including ROCKET) with up
+to three blanks and four choices:
 
 | Mode | What it practises |
 | --- | --- |
@@ -154,13 +158,16 @@ the player's age:
 | Missing letter | Letter sounds anywhere in a word |
 | Spell it! | Building the whole word, left to right |
 
-**Pattern Power** — a sequence appears with the last slot blank:
+**Pattern Power** — a sequence appears with the last slot blank. Like Number
+Blaster and Logic Lab, the tier sets how tricky the pattern is: a Starter
+sees plain AB repeats and counting by 1s, while an Expert sees five-item
+repeats (ABCDE) and counting by up to 100s:
 
 | Mode | What it practises |
 | --- | --- |
-| Pictures | Repeating patterns (AB, ABB, AAB, ABC) |
+| Pictures | Repeating patterns, from AB up to five-item repeats |
 | Colours | The same idea, without any picture naming |
-| Numbers | Counting on and back in 1s, 2s, 5s and 10s |
+| Numbers | Counting on and back, in steps that grow with the tier |
 
 **Logic Lab** — reasoning puzzles in the style of an IQ test, from about age
 seven up:

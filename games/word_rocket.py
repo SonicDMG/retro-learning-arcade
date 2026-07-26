@@ -10,7 +10,7 @@ import string
 
 import pygame
 
-from retro import palette, sfx, sprites, ui
+from retro import levels, palette, sfx, sprites, ui
 from retro.app import Scene
 from retro.results import ResultsScene
 
@@ -35,6 +35,24 @@ WORDS = [
     ("BOOK", "book"),
 ]
 
+# "rocket" already has art (it's a mode icon below) but was never a playable
+# word -- its six letters give the older tiers something longer to spell
+# without needing new pixel art.
+ROCKET_WORD = ("ROCKET", "rocket")
+
+# The word pool a round is drawn from, and how many letters are blanked out
+# in MISSING LETTER, and how many letter choices are offered. Tier 2 keeps
+# the original, unfiltered word list and single blank/three choices exactly
+# as it always was.
+WORD_POOL_BY_TIER = {
+    1: [word for word in WORDS if len(word[0]) <= 3],
+    2: WORDS,
+    3: [word for word in WORDS if len(word[0]) >= 4],
+    4: [word for word in WORDS if len(word[0]) >= 4] + [ROCKET_WORD],
+}
+BLANKS_BY_TIER = {1: 1, 2: 1, 3: 2, 4: 3}
+CHOICES_BY_TIER = {1: 3, 2: 3, 3: 4, 4: 4}
+
 MODES = [
     ("first", "FIRST LETTER", "apple", palette.GREEN),
     ("missing", "MISSING LETTER", "book", palette.CYAN),
@@ -58,12 +76,14 @@ def _letter_choices(answer, word, count=3):
     return letters
 
 
-def make_question(mode):
-    word, sprite = random.choice(WORDS)
+def make_question(mode, tier=levels.DEFAULT_TIER):
+    tier = levels.clamp_tier(tier)
+    word, sprite = random.choice(WORD_POOL_BY_TIER[tier])
     if mode == "first":
         blanks = [0]
     elif mode == "missing":
-        blanks = [random.randrange(len(word))]
+        count = min(BLANKS_BY_TIER[tier], len(word))
+        blanks = sorted(random.sample(range(len(word)), count))
     else:
         blanks = list(range(len(word)))
     return {
@@ -94,10 +114,11 @@ def _layout(count):
 class WordRoundScene(Scene):
     """One round of picture-word questions."""
 
-    def __init__(self, app, player, mode):
+    def __init__(self, app, player, mode, tier=levels.DEFAULT_TIER):
         super().__init__(app)
         self.player = player
         self.mode = mode
+        self.tier = levels.clamp_tier(tier)
         self.mode_label = next(label for key, label, _, _ in MODES if key == mode)
         self.accent = next(color for key, _, _, color in MODES if key == mode)
         self.index = 0
@@ -122,7 +143,7 @@ class WordRoundScene(Scene):
             self._finish()
             return
         self.index += 1
-        self.question = make_question(self.mode)
+        self.question = make_question(self.mode, self.tier)
         self.perfect_word = True
         self.state = "asking"
         self.feedback = ""
@@ -134,7 +155,7 @@ class WordRoundScene(Scene):
             self.buttons = []
             return
         answer = self.question["word"][blank]
-        letters = _letter_choices(answer, self.question["word"])
+        letters = _letter_choices(answer, self.question["word"], CHOICES_BY_TIER[self.tier])
         self.attempts = 0
         self.buttons = [
             ui.Button(
@@ -157,7 +178,10 @@ class WordRoundScene(Scene):
                 self.mode_label,
                 self.correct,
                 ROUND_LENGTH,
-                lambda app: app.replace(WordRoundScene(app, self.player, self.mode)),
+                lambda app: app.replace(
+                    WordRoundScene(app, self.player, self.mode, self.tier)
+                ),
+                detail=f"LEVEL {levels.tier_name(self.tier)}",
             )
         )
 
@@ -203,7 +227,8 @@ class WordRoundScene(Scene):
                 self.app.pop()
                 return
             if self.state == "asking":
-                for index, key in enumerate((pygame.K_1, pygame.K_2, pygame.K_3)):
+                keys = (pygame.K_1, pygame.K_2, pygame.K_3, pygame.K_4)
+                for index, key in enumerate(keys):
                     if event.key == key and index < len(self.buttons):
                         self._answer(self.buttons[index])
                         return
@@ -292,11 +317,12 @@ class WordMenuScene(Scene):
     def __init__(self, app, player):
         super().__init__(app)
         self.player = player
+        self.nudge = player.nudge
         self.time = 0.0
         self.starfield = ui.Starfield(320, 180, count=40, speed=8)
         self.buttons = [
             ui.Button(
-                (28 + index * 92, 60, 84, 60),
+                (28 + index * 92, 46, 84, 56),
                 label,
                 color,
                 sprite=sprite,
@@ -306,6 +332,26 @@ class WordMenuScene(Scene):
             )
             for index, (key, label, sprite, color) in enumerate(MODES)
         ]
+        self.nudge_buttons = [
+            ui.Button(
+                (56 + index * 72, 130, 68, 20),
+                levels.NUDGE_NAMES[value],
+                palette.PURPLE,
+                text_size=12,
+                value=value,
+            )
+            for index, value in enumerate(levels.NUDGES)
+        ]
+
+    @property
+    def tier(self):
+        return self.player.tier(self.nudge)
+
+    def on_enter(self):
+        from retro import progress
+
+        self.player = progress.Player(self.player.name)
+        self.nudge = self.player.nudge
 
     def handle_event(self, event):
         if event.type == pygame.KEYDOWN:
@@ -321,15 +367,21 @@ class WordMenuScene(Scene):
             if button.handle_event(event):
                 self._start(button.value)
                 return
+        for button in self.nudge_buttons:
+            if button.handle_event(event):
+                self.nudge = button.value
+                self.player.set_nudge(button.value)
+                sfx.play("click")
+                return
 
     def _start(self, mode):
         sfx.play("select")
-        self.app.push(WordRoundScene(self.app, self.player, mode))
+        self.app.push(WordRoundScene(self.app, self.player, mode, self.tier))
 
     def update(self, dt):
         self.time += dt
         self.starfield.update(dt)
-        for button in self.buttons:
+        for button in self.buttons + self.nudge_buttons:
             button.update(dt)
 
     def draw(self, surface):
@@ -337,12 +389,25 @@ class WordMenuScene(Scene):
         self.starfield.draw(surface)
         wobble = ui.title_wobble(self.time)
         ui.text(
-            surface, "WORD ROCKET", (160, int(10 + wobble)), palette.CYAN, 30, align="center"
+            surface, "WORD ROCKET", (160, int(6 + wobble)), palette.CYAN, 26, align="center"
         )
-        ui.text(surface, "PICK A GAME", (160, 42), palette.WHITE, 16, align="center")
         ui.star_counter(surface, self.player.stars, (4, 2))
         for button in self.buttons:
             button.draw(surface)
+        ui.text(surface, "LEVEL", (6, 136), palette.WHITE, 12)
+        for button in self.nudge_buttons:
+            button.color = palette.YELLOW if button.value == self.nudge else palette.PURPLE
+            button.draw(surface)
+        age = self.player.age
+        summary = f"AGE {age}" if age else "AGE NOT SET"
+        ui.text(
+            surface,
+            f"{summary}   -   {levels.tier_name(self.tier)}",
+            (160, 158),
+            palette.GRAY,
+            13,
+            align="center",
+        )
         ui.text(surface, "ESC = BACK", (316, 168), palette.DARK_GRAY, 12, align="right")
 
 

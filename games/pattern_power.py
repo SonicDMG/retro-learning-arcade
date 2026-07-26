@@ -9,7 +9,7 @@ import random
 
 import pygame
 
-from retro import palette, sfx, sprites, ui
+from retro import levels, palette, sfx, sprites, ui
 from retro.app import Scene
 from retro.results import ResultsScene
 
@@ -34,19 +34,44 @@ PATTERN_COLORS = [
     palette.ORANGE,
 ]
 
-# Repeating units, written as indexes into a small set of picked items.
-UNITS = [
-    (0, 1),           # AB
-    (0, 1),           # AB again, so the easiest shape stays common
-    (0, 0, 1),        # AAB
-    (0, 1, 1),        # ABB
-    (0, 1, 2),        # ABC
-]
+# Repeating units, written as indexes into a small set of picked items. Unit
+# length is capped at 5 (SHOWN) so at least one full repeat is always visible
+# -- any longer and the "?" would be an unguessable first sighting.
+UNITS_BY_TIER = {
+    1: [(0, 1)],  # AB only -- the simplest repeat there is
+    2: [
+        (0, 1),           # AB
+        (0, 1),           # AB again, so the easiest shape stays common
+        (0, 0, 1),        # AAB
+        (0, 1, 1),        # ABB
+        (0, 1, 2),        # ABC
+    ],
+    3: [
+        (0, 1, 2),        # ABC
+        (0, 0, 1, 1),     # AABB
+        (0, 1, 2, 3),     # ABCD
+        (0, 1, 0, 2),     # ABAC
+    ],
+    4: [
+        (0, 1, 2, 3),        # ABCD
+        (0, 1, 2, 1, 3),     # ABCBD
+        (0, 1, 2, 3, 4),     # ABCDE
+        (0, 1, 0, 2, 3),     # ABACD
+    ],
+}
+
+# step choices, chance of counting up, and the range a sequence starts from.
+NUMBER_TUNING = {
+    1: ([1, 1, 2], 0.85, 5),
+    2: ([1, 1, 2, 2, 5, 10], 0.7, 10),
+    3: ([2, 5, 10, 10, 20, 25], 0.5, 50),
+    4: ([10, 20, 25, 50, 100], 0.5, 200),
+}
 
 
-def _repeating_question(pool, kind):
+def _repeating_question(pool, kind, tier):
     """Build a repeating pattern out of items drawn from pool."""
-    unit = random.choice(UNITS)
+    unit = random.choice(UNITS_BY_TIER[tier])
     needed = max(unit) + 1
     items = random.sample(pool, needed)
     sequence = [items[unit[i % len(unit)]] for i in range(SHOWN + 1)]
@@ -65,19 +90,21 @@ def _repeating_question(pool, kind):
     }
 
 
-def make_question(mode):
+def make_question(mode, tier=levels.DEFAULT_TIER):
+    tier = levels.clamp_tier(tier)
     if mode == "picture":
-        question = _repeating_question(PATTERN_SPRITES, "picture")
+        question = _repeating_question(PATTERN_SPRITES, "picture", tier)
     elif mode == "color":
-        question = _repeating_question(PATTERN_COLORS, "color")
+        question = _repeating_question(PATTERN_COLORS, "color", tier)
     else:
-        step = random.choice([1, 1, 2, 2, 5, 10])
-        going_up = random.random() < 0.7
+        steps, up_chance, spread = NUMBER_TUNING[tier]
+        step = random.choice(steps)
+        going_up = random.random() < up_chance
         if going_up:
-            start = random.randint(0, 10)
+            start = random.randint(0, spread)
         else:
             # Only count down from high enough that we never go negative.
-            start = random.randint(SHOWN * step, SHOWN * step + 10)
+            start = random.randint(SHOWN * step, SHOWN * step + spread)
             step = -step
         sequence = [start + step * i for i in range(SHOWN + 1)]
         answer = sequence[SHOWN]
@@ -113,10 +140,11 @@ def _layout(count):
 class PatternRoundScene(Scene):
     """One round of "what comes next?"."""
 
-    def __init__(self, app, player, mode):
+    def __init__(self, app, player, mode, tier=levels.DEFAULT_TIER):
         super().__init__(app)
         self.player = player
         self.mode = mode
+        self.tier = levels.clamp_tier(tier)
         self.mode_label = next(label for key, label, _, _ in MODES if key == mode)
         self.accent = next(color for key, _, _, color in MODES if key == mode)
         self.index = 0
@@ -142,7 +170,7 @@ class PatternRoundScene(Scene):
             self._finish()
             return
         self.index += 1
-        self.question = make_question(self.mode)
+        self.question = make_question(self.mode, self.tier)
         self.attempts = 0
         self.state = "asking"
         self.feedback = ""
@@ -176,7 +204,10 @@ class PatternRoundScene(Scene):
                 self.mode_label,
                 self.correct,
                 ROUND_LENGTH,
-                lambda app: app.replace(PatternRoundScene(app, self.player, self.mode)),
+                lambda app: app.replace(
+                    PatternRoundScene(app, self.player, self.mode, self.tier)
+                ),
+                detail=f"LEVEL {levels.tier_name(self.tier)}",
             )
         )
 
@@ -295,11 +326,12 @@ class PatternMenuScene(Scene):
     def __init__(self, app, player):
         super().__init__(app)
         self.player = player
+        self.nudge = player.nudge
         self.time = 0.0
         self.starfield = ui.Starfield(320, 180, count=40, speed=8)
         self.buttons = [
             ui.Button(
-                (28 + index * 92, 60, 84, 60),
+                (28 + index * 92, 46, 84, 56),
                 label,
                 color,
                 sprite=sprite,
@@ -309,6 +341,26 @@ class PatternMenuScene(Scene):
             )
             for index, (key, label, sprite, color) in enumerate(MODES)
         ]
+        self.nudge_buttons = [
+            ui.Button(
+                (56 + index * 72, 130, 68, 20),
+                levels.NUDGE_NAMES[value],
+                palette.PURPLE,
+                text_size=12,
+                value=value,
+            )
+            for index, value in enumerate(levels.NUDGES)
+        ]
+
+    @property
+    def tier(self):
+        return self.player.tier(self.nudge)
+
+    def on_enter(self):
+        from retro import progress
+
+        self.player = progress.Player(self.player.name)
+        self.nudge = self.player.nudge
 
     def handle_event(self, event):
         if event.type == pygame.KEYDOWN:
@@ -324,15 +376,21 @@ class PatternMenuScene(Scene):
             if button.handle_event(event):
                 self._start(button.value)
                 return
+        for button in self.nudge_buttons:
+            if button.handle_event(event):
+                self.nudge = button.value
+                self.player.set_nudge(button.value)
+                sfx.play("click")
+                return
 
     def _start(self, mode):
         sfx.play("select")
-        self.app.push(PatternRoundScene(self.app, self.player, mode))
+        self.app.push(PatternRoundScene(self.app, self.player, mode, self.tier))
 
     def update(self, dt):
         self.time += dt
         self.starfield.update(dt)
-        for button in self.buttons:
+        for button in self.buttons + self.nudge_buttons:
             button.update(dt)
 
     def draw(self, surface):
@@ -340,12 +398,25 @@ class PatternMenuScene(Scene):
         self.starfield.draw(surface)
         wobble = ui.title_wobble(self.time)
         ui.text(
-            surface, "PATTERN POWER", (160, int(10 + wobble)), palette.GREEN, 30, align="center"
+            surface, "PATTERN POWER", (160, int(6 + wobble)), palette.GREEN, 26, align="center"
         )
-        ui.text(surface, "PICK A GAME", (160, 42), palette.WHITE, 16, align="center")
         ui.star_counter(surface, self.player.stars, (4, 2))
         for button in self.buttons:
             button.draw(surface)
+        ui.text(surface, "LEVEL", (6, 136), palette.WHITE, 12)
+        for button in self.nudge_buttons:
+            button.color = palette.YELLOW if button.value == self.nudge else palette.PURPLE
+            button.draw(surface)
+        age = self.player.age
+        summary = f"AGE {age}" if age else "AGE NOT SET"
+        ui.text(
+            surface,
+            f"{summary}   -   {levels.tier_name(self.tier)}",
+            (160, 158),
+            palette.GRAY,
+            13,
+            align="center",
+        )
         ui.text(surface, "ESC = BACK", (316, 168), palette.DARK_GRAY, 12, align="right")
 
 
