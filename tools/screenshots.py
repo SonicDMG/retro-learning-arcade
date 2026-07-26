@@ -31,6 +31,7 @@ from games import (  # noqa: E402
     logic_lab,
     math_blaster,
     pattern_power,
+    scoreboard,
     word_rocket,
 )
 from retro import palette, progress  # noqa: E402
@@ -76,6 +77,20 @@ def demo_player(stars=42, age=8):
     # In memory only; never written to disk.
     player.entry["stars"] = stars
     player.entry["age"] = age
+    # A plausible history, so the scoreboard shot has something to show.
+    player.entry["played"] = {
+        "math_multiply": 4, "math_divide": 2, "math_word": 3,
+        "words_first": 2, "patterns_number": 3,
+        "typing_earth": 5, "typing_water": 2,
+        "logic_matrix": 3, "logic_odd": 2,
+    }
+    player.entry["best"] = {
+        "math_multiply": 10, "math_divide": 8, "math_word": 9,
+        "words_first": 7, "patterns_number": 8,
+        "typing_earth": 8, "typing_water": 6,
+        "logic_matrix": 7, "logic_odd": 8,
+    }
+    player.entry["crystals"] = {"earth": 6, "water": 2}
     return player
 
 
@@ -176,6 +191,10 @@ def build():
     )
     matrix_scene.index = 3
     shots["logic-lab"] = render(app, matrix_scene)
+
+    # The scoreboard, with that history behind it.
+    board = scoreboard.ScoreboardScene(app, player)
+    shots["scoreboard"] = render(app, board)
 
     for name, surface in shots.items():
         path = os.path.join(OUT_DIR, f"{name}.png")

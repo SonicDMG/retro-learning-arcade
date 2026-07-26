@@ -35,6 +35,7 @@ them.)
 </p>
 <p align="center">
   <img src="docs/screenshots/story-problem.png" width="420" alt="A story problem naming the player: Juni has 18 marbles and gives away 7">
+  <img src="docs/screenshots/scoreboard.png" width="420" alt="The scoreboard: stars, crystals, rounds played and best score per game">
 </p>
 
 Every screenshot is a real frame from the game, scanlines and all, produced by
@@ -217,6 +218,17 @@ over".
 Stars are saved per player in `saves/progress.json`, along with each game's
 best score. Delete that file to reset everything.
 
+### The scoreboard
+
+The sixth tile on the shelf is each player's own scoreboard: total stars and
+crystals, rounds played, and for every game how many rounds and the best
+score so far, with a bar showing how close that is to a perfect round.
+Clicking a game opens it mode by mode, so it is obvious that times tables
+have been played twenty times and division twice.
+
+Nothing here is competitive between players — a child sees only their own
+record, and the only direction it moves is up.
+
 ### Sound
 
 Every effect is a square, triangle, saw or noise wave built from scratch at
@@ -303,6 +315,7 @@ games/word_rocket.py   Word Rocket
 games/pattern_power.py Pattern Power
 games/crystal_keys.py  Crystal Keys, the typing tutor
 games/logic_lab.py     Logic Lab, the reasoning puzzles
+games/scoreboard.py    Per-player progress screens
 retro/levels.py        Age to difficulty tier, in one place
 retro/app.py           Window, scaling, scene stack, main loop
 retro/ui.py            Buttons, text, panels, starfield, particles
@@ -347,6 +360,10 @@ multiplication genuinely gets harder each tier, story problems use the
 player's name and no gendered pronouns, matrix answers follow both their row
 and their column, analogies repeat the first pair's change, sequences obey
 their own rule — and no odd-one-out has a second defensible answer.
+
+`tests/test_scoreboard.py` finishes a round of every mode through each game's
+own code and checks the save key it writes is the key the scoreboard reads,
+so a renamed mode cannot leave progress recorded but invisible.
 
 `tests/test_packaging.py` covers the quiet failures: that the `retro-arcade`
 entry point resolves, that the wheel ships every module the game imports,

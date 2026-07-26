@@ -8,7 +8,14 @@ import sys
 
 import pygame
 
-from games import crystal_keys, logic_lab, math_blaster, pattern_power, word_rocket
+from games import (
+    crystal_keys,
+    logic_lab,
+    math_blaster,
+    pattern_power,
+    scoreboard,
+    word_rocket,
+)
 from retro import levels, palette, progress, sfx, sprites, ui
 from retro.app import App, Scene
 
@@ -212,6 +219,17 @@ class ArcadeScene(Scene):
                     sprite_scale=2,
                 )
             )
+        # The sixth slot of the grid is the scoreboard rather than a game.
+        column, row = len(GAMES) % 3, len(GAMES) // 3
+        self.score_button = ui.Button(
+            pygame.Rect(10 + column * 100, 36 + row * 52, 96, 48),
+            "SCOREBOARD",
+            palette.YELLOW,
+            sprite="sun",
+            hotkey=str(len(GAMES) + 1),
+            text_size=11,
+            sprite_scale=2,
+        )
         self.switch_button = ui.Button(
             (24, 144, 120, 20), "SWITCH PLAYER", palette.PURPLE, text_size=13
         )
@@ -228,13 +246,20 @@ class ArcadeScene(Scene):
                 return
             keys = (pygame.K_1, pygame.K_2, pygame.K_3, pygame.K_4, pygame.K_5, pygame.K_6)
             for index, key in enumerate(keys):
-                if event.key == key and index < len(GAMES):
-                    self._start(index)
-                    return
+                if event.key == key:
+                    if index < len(GAMES):
+                        self._start(index)
+                        return
+                    if index == len(GAMES):
+                        self._open_scoreboard()
+                        return
         for button in self.buttons:
             if button.handle_event(event):
                 self._start(button.value)
                 return
+        if self.score_button.handle_event(event):
+            self._open_scoreboard()
+            return
         if self.switch_button.handle_event(event):
             sfx.play("back")
             self.app.pop()
@@ -247,6 +272,10 @@ class ArcadeScene(Scene):
         sfx.play("select")
         GAMES[index][4](self.app, self.player)
 
+    def _open_scoreboard(self):
+        sfx.play("select")
+        scoreboard.launch(self.app, self.player)
+
     def on_enter(self):
         # Star total may have grown while we were away in a game.
         self.player = progress.Player(self.player.name)
@@ -254,7 +283,7 @@ class ArcadeScene(Scene):
     def update(self, dt):
         self.time += dt
         self.starfield.update(dt)
-        for button in self.buttons + [self.switch_button, self.age_button]:
+        for button in self.buttons + [self.score_button, self.switch_button, self.age_button]:
             button.update(dt)
 
     def draw(self, surface):
@@ -283,6 +312,9 @@ class ArcadeScene(Scene):
             button.draw(surface)
             if button.hover:
                 hovered = GAMES[index][1]
+        self.score_button.draw(surface)
+        if self.score_button.hover:
+            hovered = "YOUR STARS, BEST SCORES AND ROUNDS"
         self.switch_button.draw(surface)
         self.age_button.draw(surface)
 
