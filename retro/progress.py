@@ -50,7 +50,14 @@ PROFILES = [
 
 def _blank():
     return {
-        name: {"stars": 0, "best": {}, "played": {}, "crystals": {}, "age": None}
+        name: {
+            "stars": 0,
+            "best": {},
+            "played": {},
+            "crystals": {},
+            "age": None,
+            "hand_guide": True,
+        }
         for name, _ in PROFILES
     }
 
@@ -77,6 +84,8 @@ def load():
             age = entry.get("age")
             if isinstance(age, int) and levels.MIN_AGE <= age <= levels.MAX_AGE:
                 base[name]["age"] = age
+            if isinstance(entry.get("hand_guide"), bool):
+                base[name]["hand_guide"] = entry["hand_guide"]
     return base
 
 
@@ -117,6 +126,15 @@ class Player:
     def tier(self, nudge=0):
         """How hard this player's games should be right now."""
         return levels.tier_for(self.age, nudge)
+
+    @property
+    def hand_guide(self):
+        """Whether Crystal Keys should colour keys and fingers by hand zone."""
+        return self.entry.get("hand_guide", True)
+
+    def set_hand_guide(self, enabled):
+        self.entry["hand_guide"] = bool(enabled)
+        save(self.data)
 
     @property
     def crystals(self):

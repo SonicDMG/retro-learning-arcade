@@ -69,6 +69,43 @@ KEYBOARD_ROWS = [TOP_ROW, HOME_ROW, BOTTOM_ROW]
 KEY_W, KEY_H, KEY_GAP = 24, 18, 2
 KEYBOARD_TOP = 88
 
+# Standard touch-typing finger zones. Left to right the way real hands sit on
+# the keyboard, so the on-screen colouring matches what a real hand does.
+# Every letter belongs to exactly one finger (checked by the tests). The
+# fourth field is that finger's relative length, so the hand guide below
+# reads as an actual hand -- middle longest, pinky shortest -- rather than a
+# row of identical chips.
+FINGER_GROUPS = [
+    ("LEFT PINKY", "qaz", palette.PINK, 7),
+    ("LEFT RING", "wsx", palette.PURPLE, 10),
+    ("LEFT MIDDLE", "edc", palette.BLUE, 13),
+    ("LEFT INDEX", "rfvtgb", palette.CYAN, 9),
+    ("RIGHT INDEX", "yhnujm", palette.GREEN, 9),
+    ("RIGHT MIDDLE", "ik", palette.YELLOW, 13),
+    ("RIGHT RING", "ol", palette.ORANGE, 10),
+    ("RIGHT PINKY", "p", palette.RED, 7),
+]
+
+FINGER_FOR_KEY = {
+    letter: (label, color)
+    for label, keys, color, _ in FINGER_GROUPS
+    for letter in keys
+}
+
+# An orthographic, looking-straight-down view of two hands hovering over the
+# keys: a palm strip per hand with four fingers hanging from it. It sits
+# above the keyboard, at eye level with the word being typed, rather than
+# down by the keys themselves.
+HAND_FINGER_W = 8
+HAND_FINGER_GAP = 1
+HAND_PALM_H = 4
+HAND_GAP = 12  # Between the two hands, at the centre of the keyboard.
+HAND_MAX_FINGER_H = max(height for _, _, _, height in FINGER_GROUPS)
+HAND_BOTTOM = KEYBOARD_TOP - 2
+HAND_PALM_Y = HAND_BOTTOM - HAND_PALM_H - HAND_MAX_FINGER_H
+HAND_PALM_COLOR = palette.dim(palette.WHITE, 0.28)
+HAND_PALM_BORDER = palette.dim(palette.WHITE, 0.5)
+
 
 def element(key):
     return next(item for item in ELEMENTS if item[0] == key)
@@ -174,8 +211,13 @@ def draw_crystal(surface, center, width, height, color, charge, seconds):
         pygame.draw.rect(surface, palette.WHITE, (cx - 1, top - 4, 2, 2))
 
 
-def draw_keyboard(surface, next_key, color, wrong_flash=0.0):
-    """The on-screen keyboard, with the next key to press lit up."""
+def draw_keyboard(surface, next_key, color, wrong_flash=0.0, hand_guide=True):
+    """The on-screen keyboard, with the next key to press lit up.
+
+    With hand_guide on, every other key is tinted by the finger that should
+    press it, so the colouring teaches finger zones on every key, not just
+    the one currently lit.
+    """
     for row_index, row in enumerate(KEYBOARD_ROWS):
         y = KEYBOARD_TOP + row_index * (KEY_H + KEY_GAP)
         start_x = 30 + row_index * 13
@@ -185,6 +227,10 @@ def draw_keyboard(surface, next_key, color, wrong_flash=0.0):
             if is_next:
                 face = palette.dim(color, 0.75) if wrong_flash <= 0 else palette.dim(palette.RED, 0.7)
                 border = palette.WHITE
+            elif hand_guide:
+                _, finger_color = FINGER_FOR_KEY[letter]
+                face = palette.dim(finger_color, 0.32)
+                border = palette.dim(finger_color, 0.7)
             else:
                 face = palette.BG_PANEL
                 border = palette.DARK_GRAY
@@ -201,6 +247,60 @@ def draw_keyboard(surface, next_key, color, wrong_flash=0.0):
             )
 
 
+def draw_hand_guide(surface, next_key, seconds):
+    """Two top-down hands, palm and four fingers each, hovering above the
+    keyboard. Whichever finger should press the next key lights up and
+    pulses; the rest sit dim. Coloured to match the keyboard tint, so a
+    child can see the same colour on the key they need and the finger that
+    reaches it.
+    """
+    active_label, _ = FINGER_FOR_KEY.get(next_key, (None, None))
+    glow = int(seconds * 6) % 2 == 0
+    palm_w = HAND_FINGER_W * 4 + HAND_FINGER_GAP * 3
+    total = palm_w * 2 + HAND_GAP
+    start_x = 160 - total // 2
+
+    for hand_index in range(2):
+        hand_x = start_x + hand_index * (palm_w + HAND_GAP)
+        # Rounded only on the outer top corner -- the side away from the
+        # other hand -- so the two palms read as a pair, not a mirror blob.
+        palm_rect = pygame.Rect(hand_x, HAND_PALM_Y, palm_w, HAND_PALM_H)
+        outer_radius = {"border_top_left_radius" if hand_index == 0 else "border_top_right_radius": 3}
+        pygame.draw.rect(surface, HAND_PALM_COLOR, palm_rect, **outer_radius)
+        pygame.draw.rect(surface, HAND_PALM_BORDER, palm_rect, 1, **outer_radius)
+
+        # The thumb sits on each palm's inner edge, next to its index finger,
+        # facing the other hand. It never lights up -- no letter here uses it.
+        thumb_x = palm_rect.right - 2 if hand_index == 0 else palm_rect.left - 3
+        thumb_rect = pygame.Rect(thumb_x, palm_rect.bottom - 1, 5, 3)
+        pygame.draw.rect(surface, HAND_PALM_COLOR, thumb_rect, border_radius=2)
+        pygame.draw.rect(surface, HAND_PALM_BORDER, thumb_rect, 1, border_radius=2)
+
+        for slot in range(4):
+            label, _, color, height = FINGER_GROUPS[hand_index * 4 + slot]
+            x = hand_x + slot * (HAND_FINGER_W + HAND_FINGER_GAP)
+            rect = pygame.Rect(x, palm_rect.bottom - 1, HAND_FINGER_W, height)
+            active = label == active_label
+            body = palette.lighten(color, 0.2) if active else palette.dim(color, 0.4)
+            border = palette.WHITE if (active and glow) else palette.dim(color, 0.75)
+            # Square where the finger meets the palm, rounded at the
+            # fingertip -- the join reads as attached, not a floating pill.
+            pygame.draw.rect(
+                surface, body, rect,
+                border_bottom_left_radius=3, border_bottom_right_radius=3,
+            )
+            pygame.draw.rect(
+                surface, border, rect, 1,
+                border_bottom_left_radius=3, border_bottom_right_radius=3,
+            )
+            # A small pale nail at the tip sells the fingertip at a glance.
+            nail = pygame.Rect(0, 0, HAND_FINGER_W - 4, 3)
+            nail.midbottom = (rect.centerx, rect.bottom - 1)
+            pygame.draw.rect(
+                surface, palette.lighten(color, 0.55 if active else 0.2), nail, border_radius=2
+            )
+
+
 class TypingRoundScene(Scene):
     """One realm's round: eight prompts, typed key by key."""
 
@@ -208,6 +308,7 @@ class TypingRoundScene(Scene):
         super().__init__(app)
         self.player = player
         self.element = element_key
+        self.hand_guide = player.hand_guide
         _, self.label, self.icon, self.color, self.allowed = element(element_key)
         self.prompts = random.sample(LESSONS[element_key], ROUND_LENGTH)
         self.index = 0
@@ -401,20 +502,17 @@ class TypingRoundScene(Scene):
                 surface, f"CLEAN {self.clean}", (312, 42), palette.YELLOW, 12, align="right"
             )
 
-        draw_keyboard(surface, self.next_key, self.color, self.wrong_flash)
+        if self.hand_guide and self.state == "typing":
+            draw_hand_guide(surface, self.next_key, self.time)
+        draw_keyboard(
+            surface, self.next_key, self.color, self.wrong_flash, hand_guide=self.hand_guide
+        )
         self.particles.draw(surface)
 
         if self.feedback:
             ui.text(surface, self.feedback, (160, 68), palette.GREEN, 16, align="center")
-        elif self.started_at is None:
-            ui.text(
-                surface,
-                "TYPE THE LETTERS!",
-                (160, 68),
-                palette.GRAY,
-                14,
-                align="center",
-            )
+        elif self.started_at is None and not self.hand_guide:
+            ui.text(surface, "TYPE THE LETTERS!", (160, 68), palette.GRAY, 14, align="center")
         ui.text(surface, "ESC = MENU", (316, 166), palette.DARK_GRAY, 12, align="right")
 
     def _draw_prompt(self, surface):
@@ -461,6 +559,9 @@ class ElementMenuScene(Scene):
             )
             for index, (key, label, icon, color, _) in enumerate(ELEMENTS)
         ]
+        self.hand_guide_button = ui.Button(
+            (90, 148, 140, 14), "", palette.WHITE, text_size=10
+        )
 
     def on_enter(self):
         from retro import progress
@@ -483,6 +584,10 @@ class ElementMenuScene(Scene):
             if button.handle_event(event):
                 self._start(button.value)
                 return
+        if self.hand_guide_button.handle_event(event):
+            sfx.play("click")
+            self.player.set_hand_guide(not self.player.hand_guide)
+            return
 
     def _start(self, element_key):
         sfx.play("select")
@@ -493,6 +598,7 @@ class ElementMenuScene(Scene):
         self.ambient.update(dt)
         for button in self.buttons:
             button.update(dt)
+        self.hand_guide_button.update(dt)
 
     def draw(self, surface):
         surface.fill(palette.BG_DEEP)
@@ -518,11 +624,15 @@ class ElementMenuScene(Scene):
         ui.text(
             surface,
             "HOME ROW FIRST -- EARTH IS EASIEST",
-            (160, 144),
+            (160, 136),
             palette.GRAY,
-            13,
+            10,
             align="center",
         )
+        on = self.player.hand_guide
+        self.hand_guide_button.label = f"HAND GUIDE: {'ON' if on else 'OFF'}"
+        self.hand_guide_button.color = palette.GREEN if on else palette.GRAY
+        self.hand_guide_button.draw(surface)
         ui.text(surface, "ESC = BACK", (316, 168), palette.DARK_GRAY, 12, align="right")
 
 

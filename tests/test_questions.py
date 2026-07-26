@@ -193,6 +193,21 @@ class TestTypingLessons(unittest.TestCase):
             self.assertTrue(previous <= set(allowed), label)
             previous = set(allowed)
 
+    def test_every_letter_has_exactly_one_finger(self):
+        """The hand-position guide only teaches correctly if zones don't overlap."""
+        seen = set()
+        for label, keys, color, height in crystal_keys.FINGER_GROUPS:
+            self.assertGreater(height, 0, label)
+            overlap = seen & set(keys)
+            self.assertFalse(overlap, f"{label} repeats {overlap}")
+            seen.update(keys)
+        self.assertEqual(seen, set(string.ascii_lowercase))
+
+    def test_finger_lookup_matches_the_groups(self):
+        for label, keys, color, _ in crystal_keys.FINGER_GROUPS:
+            for letter in keys:
+                self.assertEqual(crystal_keys.FINGER_FOR_KEY[letter], (label, color))
+
 
 class TestSoundEffects(unittest.TestCase):
     """Nobody can hear a regression here, so check the waveforms directly.

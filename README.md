@@ -201,6 +201,13 @@ Finishing a realm earns **crystals**: one for completing it, one for 90%
 accuracy or better, and one more for a flawless round. They're deliberately
 rarer than stars.
 
+A **hand position guide** colours every key by the finger that should press
+it — eight zones from left pinky to right pinky, standard touch-typing style
+— and a pair of top-down hands above the keyboard lights up whichever finger
+is next. It's a visual teaching aid, not literal enforcement: the game has no
+way to know which finger a key came from, only which key. It's on by
+default; toggle it from the element-picker screen, per player.
+
 Three difficulty levels (EASY / OK / HARD) set the number ranges in Number
 Blaster. A six-year-old usually wants EASY or OK.
 
