@@ -25,6 +25,70 @@ from retro import sfx, sprites  # noqa: E402
 REPEATS = 400
 
 
+class TestMathPropsQuestions(unittest.TestCase):
+    """Multiplication-properties mode: every property at every tier."""
+
+    PROPS = ["commutative", "associative", "distributive", "identity", "zero"]
+
+    def test_answer_is_always_in_choices(self):
+        for prop in self.PROPS:
+            for tier in (1, 2, 3, 4):
+                for _ in range(REPEATS):
+                    q = math_blaster.make_props_question(prop, tier)
+                    self.assertIn(q["answer"], q["choices"], (prop, tier, q["prompt"]))
+
+    def test_three_distinct_choices(self):
+        for prop in self.PROPS:
+            for tier in (1, 2, 3, 4):
+                for _ in range(REPEATS):
+                    q = math_blaster.make_props_question(prop, tier)
+                    self.assertEqual(len(q["choices"]), 3, (prop, tier))
+                    self.assertEqual(len(set(q["choices"])), 3, (prop, tier, q["choices"]))
+
+    def test_answers_are_non_negative(self):
+        for prop in self.PROPS:
+            for tier in (1, 2, 3, 4):
+                for _ in range(REPEATS):
+                    q = math_blaster.make_props_question(prop, tier)
+                    self.assertGreaterEqual(q["answer"], 0, (prop, tier, q["prompt"]))
+                    for choice in q["choices"]:
+                        self.assertGreaterEqual(choice, 0, (prop, tier))
+
+    def test_identity_answer_is_the_number_itself(self):
+        for tier in (1, 2, 3, 4):
+            for _ in range(REPEATS):
+                q = math_blaster.make_props_question("identity", tier)
+                # prompt is "N x 1 = ?" — answer must equal N
+                n = int(q["prompt"].split(" x ")[0])
+                self.assertEqual(q["answer"], n, q["prompt"])
+
+    def test_zero_answer_is_always_zero(self):
+        for tier in (1, 2, 3, 4):
+            for _ in range(REPEATS):
+                q = math_blaster.make_props_question("zero", tier)
+                self.assertEqual(q["answer"], 0, q["prompt"])
+
+    def test_distributive_answer_matches_expanded_form(self):
+        for tier in (1, 2, 3, 4):
+            for _ in range(REPEATS):
+                q = math_blaster.make_props_question("distributive", tier)
+                parts = q["prompt"].replace(" = ?", "").split(" + ")
+                self.assertEqual(len(parts), 2, q["prompt"])
+                left = eval(parts[0].replace("x", "*"))   # noqa: S307
+                right = eval(parts[1].replace("x", "*"))  # noqa: S307
+                self.assertEqual(q["answer"], left + right, q["prompt"])
+
+    def test_props_modes_not_in_tier1_menu(self):
+        """Tier 1 (age 5-6) should not see the properties modes."""
+        self.assertNotIn("props_learn", math_blaster.MODES_BY_TIER[1])
+        self.assertNotIn("props_quiz", math_blaster.MODES_BY_TIER[1])
+
+    def test_props_modes_in_tier2_menu(self):
+        """Both learn and quiz appear for an 8-year-old (tier 2)."""
+        self.assertIn("props_learn", math_blaster.MODES_BY_TIER[2])
+        self.assertIn("props_quiz", math_blaster.MODES_BY_TIER[2])
+
+
 class TestMathQuestions(unittest.TestCase):
     """Mode-specific rules. The broad checks across every mode and tier --
     answer offered, choices distinct, nothing negative -- live in

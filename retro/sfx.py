@@ -24,7 +24,7 @@ def init():
     try:
         pygame.mixer.init(frequency=SAMPLE_RATE, size=-16, channels=1, buffer=512)
         _enabled = True
-    except pygame.error:
+    except Exception:
         _enabled = False
 
 

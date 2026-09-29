@@ -10,7 +10,7 @@ readme = "README.md"
 requires-python = ">=3.9"
 license = { text = "MIT" }
 keywords = ["kids", "education", "games", "pygame", "typing-tutor", "retro"]
-dependencies = ["pygame>=2.5,<3"]
+dependencies = ["pygame-ce>=2.5"]
 
 [project.urls]
 Homepage = "https://github.com/SonicDMG/retro-learning-arcade"

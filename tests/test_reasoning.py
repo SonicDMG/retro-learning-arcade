@@ -38,11 +38,11 @@ class TestAgeTiers(unittest.TestCase):
             self.assertGreaterEqual(tier, previous, age)
             previous = tier
 
-    def test_an_eight_year_old_gets_times_tables_and_stories(self):
+    def test_an_eight_year_old_gets_times_tables_and_properties(self):
         """The whole point of asking the age."""
         tier = levels.tier_for_age(8)
         modes = math_blaster.MODES_BY_TIER[tier]
-        for expected in ("multiply", "divide", "word"):
+        for expected in ("multiply", "props_learn", "props_quiz"):
             self.assertIn(expected, modes)
         self.assertNotIn("count", modes, "counting ducks is not for an eight-year-old")
 

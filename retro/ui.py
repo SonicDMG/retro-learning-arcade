@@ -13,12 +13,25 @@ from . import palette, sfx, sprites
 
 _fonts = {}
 
+import os as _os
+_FONT_PATH = _os.path.join(_os.path.dirname(__file__), "PressStart2P.ttf")
+
+# Map legacy size values (tuned for pygame's blurry default bitmap font) to
+# crisp Press Start 2P equivalents.  PS2P is much wider per glyph, so sizes
+# are stepped down so text still fits the 320-pixel virtual screen.
+_SIZE_MAP = {
+    46: 12, 34: 10, 30: 10, 28: 10, 26: 9,
+    24: 9,  22: 9,  20: 8,  18: 8,  16: 8,
+    14: 8,  13: 7,  12: 7,  11: 6,
+}
+
 
 def font(size):
     key = int(size)
-    if key not in _fonts:
-        _fonts[key] = pygame.font.Font(None, key)
-    return _fonts[key]
+    mapped = _SIZE_MAP.get(key, key)
+    if mapped not in _fonts:
+        _fonts[mapped] = pygame.font.Font(_FONT_PATH, mapped)
+    return _fonts[mapped]
 
 
 def text_size(message, size=14):
